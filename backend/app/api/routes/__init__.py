@@ -1,4 +1,4 @@
 """API routes package."""
-from app.api.routes import health
+from app.api.routes import health, listings
 
-__all__ = ["health"]
+__all__ = ["health", "listings"]

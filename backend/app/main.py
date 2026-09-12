@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api.routes import health
+from app.api.routes import health, listings
 
 
 def create_application() -> FastAPI:
@@ -27,6 +27,7 @@ def create_application() -> FastAPI:
 
     # Register API routers
     application.include_router(health.router, prefix="/api", tags=["Health"])
+    application.include_router(listings.router, prefix="/api", tags=["CO2 Listings"])
 
     @application.get("/", tags=["Root"])
     def root():

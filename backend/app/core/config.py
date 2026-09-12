@@ -37,12 +37,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_supabase_keys(self) -> "Settings":
-        # Fallback to publishable or service-role key if SUPABASE_KEY is not directly set
+        # Fallback to service-role or publishable key if SUPABASE_KEY is not directly set
         if not self.SUPABASE_KEY:
-            if self.SUPABASE_PUBLISHABLE_KEY:
-                self.SUPABASE_KEY = self.SUPABASE_PUBLISHABLE_KEY
-            elif self.SUPABASE_SERVICE_ROLE_KEY:
+            if self.SUPABASE_SERVICE_ROLE_KEY:
                 self.SUPABASE_KEY = self.SUPABASE_SERVICE_ROLE_KEY
+            elif self.SUPABASE_PUBLISHABLE_KEY:
+                self.SUPABASE_KEY = self.SUPABASE_PUBLISHABLE_KEY
         return self
 
     model_config = SettingsConfigDict(

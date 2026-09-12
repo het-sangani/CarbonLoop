@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
+import { EmptyState } from '../components/common/EmptyState';
 import { mockSupplyListings, mockBuyerRequirements } from '../data/mockData';
 import { 
   Search, 
@@ -10,7 +12,9 @@ import {
   Building2, 
   MapPin, 
   ArrowUpRight, 
-  RotateCcw
+  RotateCcw,
+  X,
+  Plus
 } from 'lucide-react';
 
 export const MarketplacePage: React.FC = () => {
@@ -56,6 +60,8 @@ export const MarketplacePage: React.FC = () => {
     setViewType('all');
   };
 
+  const hasActiveFilters = searchQuery !== '' || minPurity > 0 || selectedState !== 'all';
+
   return (
     <PageContainer
       title="Industrial CO₂ Marketplace"
@@ -63,17 +69,15 @@ export const MarketplacePage: React.FC = () => {
       badge="Active Marketplace"
       action={
         <div className="flex items-center gap-2">
-          <Link
-            to="/supplier/create-listing"
-            className="rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-slate-950 shadow-glow-emerald hover:bg-emerald-450 transition-all"
-          >
-            + List Stream
+          <Link to="/supplier/create-listing">
+            <Button variant="primary" icon={Plus} size="sm">
+              List Stream
+            </Button>
           </Link>
-          <Link
-            to="/buyer/create-requirement"
-            className="rounded-xl bg-slate-800 border border-white/10 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition-all"
-          >
-            + Post Demand
+          <Link to="/buyer/create-requirement">
+            <Button variant="secondary" icon={Plus} size="sm">
+              Post Demand
+            </Button>
           </Link>
         </div>
       }
@@ -94,15 +98,25 @@ export const MarketplacePage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by city (Ahmedabad, Vadodara...), facility, or entity..."
-                className="w-full rounded-xl border border-white/10 bg-slate-900/90 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-slate-900/90 pl-10 pr-9 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none transition-colors"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
 
             {/* View Selector Buttons */}
-            <div className="flex items-center rounded-xl bg-slate-900/90 p-1 border border-white/10 w-full md:w-auto">
+            <div className="flex items-center rounded-xl bg-slate-900/90 p-1 border border-white/10 w-full md:w-auto overflow-x-auto">
               <button
                 onClick={() => setViewType('all')}
-                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
                   viewType === 'all'
                     ? 'bg-emerald-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -112,7 +126,7 @@ export const MarketplacePage: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewType('suppliers')}
-                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
                   viewType === 'suppliers'
                     ? 'bg-emerald-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -122,7 +136,7 @@ export const MarketplacePage: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewType('buyers')}
-                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
                   viewType === 'buyers'
                     ? 'bg-emerald-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -173,37 +187,61 @@ export const MarketplacePage: React.FC = () => {
               </div>
             </div>
 
-            {(searchQuery || minPurity > 0 || selectedState !== 'all') && (
+            {hasActiveFilters && (
               <button
                 onClick={handleResetFilters}
                 className="flex items-center gap-1 text-slate-400 hover:text-emerald-400 transition-colors"
               >
                 <RotateCcw className="h-3 w-3" />
-                <span>Reset Filters</span>
+                <span>Reset All Filters</span>
               </button>
             )}
           </div>
+
+          {/* Active Filter Chips */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5 text-xs">
+              <span className="text-slate-400 text-[11px]">Active:</span>
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">
+                  <span>Query: "{searchQuery}"</span>
+                  <button onClick={() => setSearchQuery('')} className="hover:text-white"><X className="h-3 w-3" /></button>
+                </span>
+              )}
+              {minPurity > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">
+                  <span>Purity: &gt;{minPurity}%</span>
+                  <button onClick={() => setMinPurity(0)} className="hover:text-white"><X className="h-3 w-3" /></button>
+                </span>
+              )}
+              {selectedState !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-xs text-cyan-300">
+                  <span>State: {selectedState}</span>
+                  <button onClick={() => setSelectedState('all')} className="hover:text-white"><X className="h-3 w-3" /></button>
+                </span>
+              )}
+            </div>
+          )}
 
         </div>
 
         {/* Empty State */}
         {totalResults === 0 && (
-          <div className="glass-panel rounded-2xl p-12 text-center max-w-md mx-auto space-y-4">
-            <div className="h-12 w-12 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
-              <Search className="h-6 w-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">No streams match criteria</h3>
-            <p className="text-xs text-slate-400">
-              Try loosening your minimum purity threshold or clearing your search term.
-            </p>
-            <button
-              onClick={handleResetFilters}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset All Filters
-            </button>
-          </div>
+          <EmptyState
+            icon={Search}
+            title="No streams match current filter criteria"
+            description="Try loosening your minimum purity threshold, selecting 'All States', or clearing your location search term."
+            action={
+              <Button
+                variant="primary"
+                size="sm"
+                icon={RotateCcw}
+                onClick={handleResetFilters}
+              >
+                Reset All Filters
+              </Button>
+            }
+          />
         )}
 
         {/* Supply Stream Cards */}
@@ -235,7 +273,7 @@ export const MarketplacePage: React.FC = () => {
                       </div>
 
                       <div className="text-right">
-                        <span className="text-xl font-mono font-bold text-emerald-400">
+                        <span className="text-xl font-mono font-bold text-emerald-400 tabular-nums">
                           ${stream.pricePerTonneUSD}
                         </span>
                         <span className="text-[11px] text-slate-400 block">/ tonne</span>
@@ -251,15 +289,15 @@ export const MarketplacePage: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2 text-xs bg-black/40 rounded-xl p-3 border border-white/5">
                     <div>
                       <span className="text-[10px] text-slate-400 block uppercase">CO₂ Purity</span>
-                      <strong className="text-emerald-400 font-mono text-sm">{stream.composition.co2Purity}%</strong>
+                      <strong className="text-emerald-400 font-mono text-sm tabular-nums">{stream.composition.co2Purity}%</strong>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block uppercase">Monthly Vol</span>
-                      <strong className="text-white text-sm">{stream.volumeTonnes} t</strong>
+                      <strong className="text-white text-sm tabular-nums">{stream.volumeTonnes.toLocaleString()} t</strong>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block uppercase">State / Bar</span>
-                      <strong className="text-slate-200 text-xs">{stream.physicalState} ({stream.pressureBar}b)</strong>
+                      <strong className="text-slate-200 text-xs tabular-nums">{stream.physicalState} ({stream.pressureBar}b)</strong>
                     </div>
                   </div>
 
@@ -273,13 +311,13 @@ export const MarketplacePage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <Link
                         to={`/listings/${stream.id}`}
-                        className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 font-medium text-slate-200 transition-colors"
+                        className="rounded-lg border border-white/10 bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 font-medium text-slate-200 transition-colors"
                       >
                         Specs
                       </Link>
                       <Link
                         to={`/listings/${stream.id}/bid`}
-                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 hover:bg-emerald-450 px-3 py-1.5 font-semibold text-slate-950 transition-all shadow-glow-emerald"
+                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 hover:bg-emerald-450 px-3.5 py-1.5 font-semibold text-slate-950 transition-all shadow-glow-emerald"
                       >
                         <span>Make Bid</span>
                         <ArrowUpRight className="h-3 w-3" />
@@ -322,7 +360,7 @@ export const MarketplacePage: React.FC = () => {
                       </div>
 
                       <div className="text-right">
-                        <span className="text-xl font-mono font-bold text-cyan-400">
+                        <span className="text-xl font-mono font-bold text-cyan-400 tabular-nums">
                           ${demand.targetPricePerTonneUSD}
                         </span>
                         <span className="text-[11px] text-slate-400 block">target ceiling</span>
@@ -338,15 +376,15 @@ export const MarketplacePage: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2 text-xs bg-black/40 rounded-xl p-3 border border-white/5">
                     <div>
                       <span className="text-[10px] text-slate-400 block uppercase">Min Purity</span>
-                      <strong className="text-cyan-400 font-mono text-sm">&gt; {demand.minPurityPercentage}%</strong>
+                      <strong className="text-cyan-400 font-mono text-sm tabular-nums">&gt; {demand.minPurityPercentage}%</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block uppercase">Intake Needed</span>
-                      <strong className="text-white text-sm">{demand.volumeNeededTonnes} t/mo</strong>
+                      <span className="text-[10px] text-slate-400 block uppercase">Demand Vol</span>
+                      <strong className="text-white text-sm tabular-nums">{demand.volumeNeededTonnes.toLocaleString()} t</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block uppercase">Radius Limit</span>
-                      <strong className="text-slate-200 text-xs">&lt; {demand.maxDistanceKm} km</strong>
+                      <span className="text-[10px] text-slate-400 block uppercase">Max Radius</span>
+                      <strong className="text-slate-200 text-xs tabular-nums">&lt; {demand.maxDistanceKm} km</strong>
                     </div>
                   </div>
 
@@ -360,9 +398,9 @@ export const MarketplacePage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <Link
                         to="/matches"
-                        className="inline-flex items-center gap-1 rounded-lg bg-cyan-500 hover:bg-cyan-450 px-3 py-1.5 font-semibold text-slate-950 transition-all"
+                        className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 px-3.5 py-1.5 font-semibold text-cyan-400 transition-all"
                       >
-                        <span>Match with Stream</span>
+                        <span>Find Emitter Match</span>
                         <ArrowUpRight className="h-3 w-3" />
                       </Link>
                     </div>

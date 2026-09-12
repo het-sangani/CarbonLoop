@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
+import { AlertBanner } from '../components/common/AlertBanner';
 import { 
   Sparkles, 
   MapPin, 
-  CheckCircle2, 
   ArrowRight, 
   Zap, 
   Info 
@@ -15,6 +16,7 @@ export const CreateBuyerRequirementPage: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -37,6 +39,7 @@ export const CreateBuyerRequirementPage: React.FC = () => {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (errorMessage) setErrorMessage(null);
   };
 
   const handleStateToggle = (stateVal: string) => {
@@ -47,6 +50,7 @@ export const CreateBuyerRequirementPage: React.FC = () => {
         : [...prev.acceptableStates, stateVal];
       return { ...prev, acceptableStates: updated };
     });
+    if (errorMessage) setErrorMessage(null);
   };
 
   const loadGreenFuelTemplate = () => {
@@ -67,15 +71,44 @@ export const CreateBuyerRequirementPage: React.FC = () => {
       requiredBy: '2026-10-15',
       description: 'Seeking consistent CO₂ supply to blend with electrolytic green hydrogen for synthetic aviation kerosene (e-SAF) pilot line.'
     });
+    setErrorMessage(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    // Validation
+    if (!formData.buyerName.trim() || !formData.facilityName.trim() || !formData.city.trim()) {
+      setErrorMessage('Please provide valid company, facility hub, and city information.');
+      return;
+    }
+
+    if (formData.volumeNeededTonnes <= 0) {
+      setErrorMessage('Off-take intake volume must be greater than 0 tonnes.');
+      return;
+    }
+
+    if (formData.targetPricePerTonneUSD <= 0) {
+      setErrorMessage('Target ceiling budget must be greater than $0/tonne.');
+      return;
+    }
+
+    if (formData.minPurityPercentage < 85 || formData.minPurityPercentage > 99.9) {
+      setErrorMessage('Minimum acceptable purity must be between 85.0% and 99.9%.');
+      return;
+    }
+
+    if (formData.acceptableStates.length === 0) {
+      setErrorMessage('Please select at least one acceptable physical delivery state.');
+      return;
+    }
+
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
       setSuccess(true);
-    }, 700);
+    }, 600);
   };
 
   return (
@@ -96,14 +129,36 @@ export const CreateBuyerRequirementPage: React.FC = () => {
               <Zap className="h-4 w-4 text-cyan-400" />
               Testing as GreenFuel buyer?
             </span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={loadGreenFuelTemplate}
-              className="text-xs font-semibold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1.5 rounded-lg hover:bg-cyan-500/20 transition-all"
+              className="text-xs text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20"
             >
               Load GreenFuel Template (300t)
-            </button>
+            </Button>
           </div>
+
+          {errorMessage && (
+            <AlertBanner
+              variant="error"
+              title="Requirement Submission Error"
+              message={errorMessage}
+              onClose={() => setErrorMessage(null)}
+            />
+          )}
+
+          {success && (
+            <AlertBanner
+              variant="success"
+              title="Requirement Registered Successfully"
+              message="3 compatible industrial capture feeds discovered in Western industrial corridor."
+              actionLabel="Review Matches"
+              onAction={() => navigate('/matches')}
+              onClose={() => setSuccess(false)}
+            />
+          )}
 
           <form onSubmit={handleSubmit} className="glass-panel rounded-2xl p-6 space-y-6 border-white/10">
             
@@ -286,41 +341,22 @@ export const CreateBuyerRequirementPage: React.FC = () => {
 
             {/* Submit */}
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-cyan-500 py-3.5 text-sm font-semibold text-slate-950 shadow-glow-cyan hover:bg-cyan-450 transition-all disabled:opacity-50"
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={isLoading}
+                loadingText="Querying Emitter Match Engine..."
+                icon={<ArrowRight className="h-4 w-4" />}
+                iconPosition="right"
+                className="bg-cyan-500 hover:bg-cyan-450 shadow-glow-cyan text-slate-950"
               >
-                {isLoading ? (
-                  <span>Querying Emitter Match Engine...</span>
-                ) : (
-                  <>
-                    <span>Post Requirement & Compute Matches</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
+                Post Requirement & Compute Matches
+              </Button>
             </div>
 
           </form>
-
-          {/* Success Banner */}
-          {success && (
-            <div className="glass-panel rounded-2xl p-4 border-cyan-500 bg-cyan-950/40 text-cyan-300 flex items-center justify-between animate-fade-in">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="h-5 w-5 text-cyan-400" />
-                <span className="text-sm font-medium">
-                  Requirement registered! 3 compatible industrial feeds discovered.
-                </span>
-              </div>
-              <button
-                onClick={() => navigate('/matches')}
-                className="rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400"
-              >
-                Review Matches
-              </button>
-            </div>
-          )}
 
         </div>
 
@@ -339,7 +375,7 @@ export const CreateBuyerRequirementPage: React.FC = () => {
                     <h4 className="text-lg font-bold text-white">
                       {formData.buyerName || 'Buyer Enterprise'}
                     </h4>
-                    <Badge variant="cyan">{formData.industry}</Badge>
+                    <Badge variant="cyan" withDot>{formData.industry}</Badge>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {formData.facilityName || 'Facility Hub'}
@@ -347,7 +383,7 @@ export const CreateBuyerRequirementPage: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xl font-mono font-bold text-cyan-400">
+                  <span className="text-xl font-mono font-bold text-cyan-400 tabular-nums">
                     ${formData.targetPricePerTonneUSD}
                   </span>
                   <span className="text-[11px] text-slate-400 block">target budget</span>
@@ -361,15 +397,15 @@ export const CreateBuyerRequirementPage: React.FC = () => {
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs bg-black/40 rounded-xl p-3 border border-white/5">
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">Min Purity</span>
-                  <strong className="text-cyan-400 font-mono text-sm">&gt; {formData.minPurityPercentage}%</strong>
+                  <strong className="text-cyan-400 font-mono text-sm tabular-nums">&gt; {formData.minPurityPercentage}%</strong>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">Intake</span>
-                  <strong className="text-white text-sm">{formData.volumeNeededTonnes} t</strong>
+                  <strong className="text-white text-sm tabular-nums">{formData.volumeNeededTonnes.toLocaleString()} t</strong>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">Radius</span>
-                  <strong className="text-slate-200 text-xs">&lt; {formData.maxDistanceKm} km</strong>
+                  <strong className="text-slate-200 text-xs tabular-nums">&lt; {formData.maxDistanceKm} km</strong>
                 </div>
               </div>
 

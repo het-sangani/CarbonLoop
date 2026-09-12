@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
+import { AlertBanner } from '../components/common/AlertBanner';
 import { 
   Sparkles, 
   MapPin, 
-  CheckCircle2, 
   ArrowRight,
   Zap,
   Info
@@ -15,6 +16,7 @@ export const CreateSupplyListingPage: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -40,6 +42,7 @@ export const CreateSupplyListingPage: React.FC = () => {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (errorMessage) setErrorMessage(null);
   };
 
   const loadAbcTemplate = () => {
@@ -63,15 +66,39 @@ export const CreateSupplyListingPage: React.FC = () => {
       availableFrom: '2026-10-01',
       description: 'Post-combustion amine capture slipstream from precalciner kiln with continuous dehydration and liquefaction. Reliable baseline continuous output.'
     });
+    setErrorMessage(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    // Validation
+    if (!formData.companyName.trim() || !formData.facilityName.trim() || !formData.city.trim()) {
+      setErrorMessage('Please provide valid company, facility, and city details.');
+      return;
+    }
+
+    if (formData.co2Purity < 80 || formData.co2Purity > 99.9) {
+      setErrorMessage('CO₂ purity must be calibrated between 80.0% and 99.9% for industrial off-take standards.');
+      return;
+    }
+
+    if (formData.volumeTonnes <= 0) {
+      setErrorMessage('Supply volume must be greater than 0 tonnes.');
+      return;
+    }
+
+    if (formData.pricePerTonneUSD <= 0) {
+      setErrorMessage('Off-take unit price must be greater than $0/tonne.');
+      return;
+    }
+
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
       setSuccess(true);
-    }, 700);
+    }, 600);
   };
 
   return (
@@ -92,14 +119,36 @@ export const CreateSupplyListingPage: React.FC = () => {
               <Zap className="h-4 w-4 text-emerald-400" />
               Want to test quickly?
             </span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={loadAbcTemplate}
-              className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-all"
+              className="text-xs text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
             >
               Load ABC Cement Template (500t)
-            </button>
+            </Button>
           </div>
+
+          {errorMessage && (
+            <AlertBanner
+              variant="error"
+              title="Listing Submission Error"
+              message={errorMessage}
+              onClose={() => setErrorMessage(null)}
+            />
+          )}
+
+          {success && (
+            <AlertBanner
+              variant="success"
+              title="Stream Listing Published"
+              message="Your CO₂ supply stream is now indexed in the algorithmic matching engine."
+              actionLabel="View Matches"
+              onAction={() => navigate('/matches')}
+              onClose={() => setSuccess(false)}
+            />
+          )}
 
           <form onSubmit={handleSubmit} className="glass-panel rounded-2xl p-6 space-y-6 border-white/10">
             
@@ -300,41 +349,21 @@ export const CreateSupplyListingPage: React.FC = () => {
 
             {/* Submission Button */}
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3.5 text-sm font-semibold text-slate-950 shadow-glow-emerald hover:bg-emerald-450 transition-all disabled:opacity-50"
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={isLoading}
+                loadingText="Broadcasting Stream to Marketplace..."
+                icon={<ArrowRight className="h-4 w-4" />}
+                iconPosition="right"
               >
-                {isLoading ? (
-                  <span>Broadcasting Stream to Marketplace...</span>
-                ) : (
-                  <>
-                    <span>Publish CO₂ Supply Listing</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
+                Publish CO₂ Supply Listing
+              </Button>
             </div>
 
           </form>
-
-          {/* Success Banner */}
-          {success && (
-            <div className="glass-panel rounded-2xl p-4 border-emerald-500 bg-emerald-950/40 text-emerald-300 flex items-center justify-between animate-fade-in">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                <span className="text-sm font-medium">
-                  Listing published successfully! Matching engine indexing stream.
-                </span>
-              </div>
-              <button
-                onClick={() => navigate('/matches')}
-                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-emerald-400"
-              >
-                View Matches
-              </button>
-            </div>
-          )}
 
         </div>
 
@@ -353,7 +382,7 @@ export const CreateSupplyListingPage: React.FC = () => {
                     <h4 className="text-lg font-bold text-white">
                       {formData.companyName || 'Company Name'}
                     </h4>
-                    <Badge variant="emerald">Live Preview</Badge>
+                    <Badge variant="emerald" withDot>Live Preview</Badge>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {formData.facilityName || 'Facility'} • {formData.facilityType}
@@ -361,7 +390,7 @@ export const CreateSupplyListingPage: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xl font-mono font-bold text-emerald-400">
+                  <span className="text-xl font-mono font-bold text-emerald-400 tabular-nums">
                     ${formData.pricePerTonneUSD}
                   </span>
                   <span className="text-[11px] text-slate-400 block">/ tonne</span>
@@ -376,11 +405,11 @@ export const CreateSupplyListingPage: React.FC = () => {
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs bg-black/40 rounded-xl p-3 border border-white/5">
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">CO₂ Purity</span>
-                  <strong className="text-emerald-400 font-mono text-sm">{formData.co2Purity}%</strong>
+                  <strong className="text-emerald-400 font-mono text-sm tabular-nums">{formData.co2Purity}%</strong>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">Capacity</span>
-                  <strong className="text-white text-sm">{formData.volumeTonnes} t</strong>
+                  <strong className="text-white text-sm tabular-nums">{formData.volumeTonnes.toLocaleString()} t</strong>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase">State</span>

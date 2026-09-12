@@ -288,22 +288,22 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             
             <div className="border-r border-white/5 pr-4 last:border-0">
-              <div className="text-2xl sm:text-3xl font-extrabold text-white">1.42M+</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-white font-mono tabular-nums">1.42M+</div>
               <div className="mt-1 text-xs sm:text-sm text-slate-400 font-medium">Metric Tons CO₂/yr Indexed</div>
             </div>
 
             <div className="border-r border-white/5 pr-4 last:border-0">
-              <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">38</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tabular-nums">38</div>
               <div className="mt-1 text-xs sm:text-sm text-slate-400 font-medium">Capture Facilities Ready</div>
             </div>
 
             <div className="border-r border-white/5 pr-4 last:border-0">
-              <div className="text-2xl sm:text-3xl font-extrabold text-cyan-400">64</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-cyan-400 font-mono tabular-nums">64</div>
               <div className="mt-1 text-xs sm:text-sm text-slate-400 font-medium">Industrial Off-takers Listed</div>
             </div>
 
             <div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-teal-300">94.8%</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-teal-300 font-mono tabular-nums">94.8%</div>
               <div className="mt-1 text-xs sm:text-sm text-slate-400 font-medium">Average Algorithmic Compatibility</div>
             </div>
 

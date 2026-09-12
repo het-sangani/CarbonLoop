@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
 import { mockSupplyListings } from '../data/mockData';
 import { 
   MapPin, 
@@ -15,6 +16,7 @@ import {
 
 export const ListingDetailsPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
   const listing = mockSupplyListings.find(l => l.id === id) || mockSupplyListings[0];
 
   const [destinationCity, setDestinationCity] = useState('Vadodara');
@@ -37,20 +39,23 @@ export const ListingDetailsPage: React.FC = () => {
       badge={`Stream Spec • ${listing.id}`}
       action={
         <div className="flex items-center gap-3">
-          <Link
-            to="/marketplace"
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/80 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/marketplace')}
+            icon={<ArrowLeft className="h-4 w-4" />}
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Market</span>
-          </Link>
-          <Link
-            to={`/listings/${listing.id}/bid`}
-            className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-450 px-4 py-2 text-xs font-semibold text-slate-950 shadow-glow-emerald transition-all"
+            Back to Market
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate(`/listings/${listing.id}/bid`)}
+            icon={<ArrowRight className="h-4 w-4" />}
+            iconPosition="right"
           >
-            <span>Submit Off-take Bid</span>
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+            Submit Off-take Bid
+          </Button>
         </div>
       }
     >
@@ -74,7 +79,7 @@ export const ListingDetailsPage: React.FC = () => {
               </div>
 
               <div className="text-left sm:text-right">
-                <span className="text-3xl font-mono font-bold text-emerald-400">
+                <span className="text-3xl font-mono font-bold text-emerald-400 tabular-nums">
                   ${listing.pricePerTonneUSD}
                 </span>
                 <span className="text-xs text-slate-400 block">/ metric tonne ({listing.deliveryTerms})</span>
@@ -98,7 +103,7 @@ export const ListingDetailsPage: React.FC = () => {
                 Laboratory Gas Chromatography Breakdown
               </h4>
 
-              <div className="rounded-xl border border-white/10 overflow-hidden">
+              <div className="rounded-xl border border-white/10 overflow-hidden bg-slate-950/40">
                 <table className="w-full text-left text-xs sm:text-sm">
                   <thead className="bg-slate-950/80 text-slate-400 text-xs uppercase border-b border-white/10">
                     <tr>
@@ -109,33 +114,33 @@ export const ListingDetailsPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-slate-200">
-                    <tr>
+                    <tr className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3 font-semibold text-white">Carbon Dioxide (CO₂)</td>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-400 text-base">{listing.composition.co2Purity}%</td>
+                      <td className="px-4 py-3 font-mono font-bold text-emerald-400 text-base tabular-nums">{listing.composition.co2Purity}%</td>
                       <td className="px-4 py-3 text-slate-400">GC-TCD</td>
-                      <td className="px-4 py-3 text-right"><Badge variant="emerald">Compliant</Badge></td>
+                      <td className="px-4 py-3 text-right"><Badge variant="emerald" withDot>Compliant</Badge></td>
                     </tr>
-                    <tr>
+                    <tr className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3">Moisture Content (H₂O)</td>
-                      <td className="px-4 py-3 font-mono text-slate-300">{listing.composition.moisturePpm} ppm</td>
+                      <td className="px-4 py-3 font-mono text-slate-300 tabular-nums">{listing.composition.moisturePpm} ppm</td>
                       <td className="px-4 py-3 text-slate-400">Chilled Mirror Hygrometry</td>
                       <td className="px-4 py-3 text-right"><Badge variant="cyan">&lt; 200 ppm</Badge></td>
                     </tr>
-                    <tr>
+                    <tr className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3">Nitrogen (N₂)</td>
-                      <td className="px-4 py-3 font-mono text-slate-300">{listing.composition.nitrogenPpm} ppm</td>
+                      <td className="px-4 py-3 font-mono text-slate-300 tabular-nums">{listing.composition.nitrogenPpm} ppm</td>
                       <td className="px-4 py-3 text-slate-400">Gas Chromatography</td>
                       <td className="px-4 py-3 text-right"><Badge variant="slate">Inert</Badge></td>
                     </tr>
-                    <tr>
+                    <tr className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3">Sulfur Oxides (SOx)</td>
-                      <td className="px-4 py-3 font-mono text-slate-300">{listing.composition.soxPpm} ppm</td>
+                      <td className="px-4 py-3 font-mono text-slate-300 tabular-nums">{listing.composition.soxPpm} ppm</td>
                       <td className="px-4 py-3 text-slate-400">UV Fluorescence</td>
                       <td className="px-4 py-3 text-right"><Badge variant="emerald">Ultra-Low</Badge></td>
                     </tr>
-                    <tr>
+                    <tr className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3">Nitrogen Oxides (NOx)</td>
-                      <td className="px-4 py-3 font-mono text-slate-300">{listing.composition.noxPpm} ppm</td>
+                      <td className="px-4 py-3 font-mono text-slate-300 tabular-nums">{listing.composition.noxPpm} ppm</td>
                       <td className="px-4 py-3 text-slate-400">Chemiluminescence</td>
                       <td className="px-4 py-3 text-right"><Badge variant="emerald">Ultra-Low</Badge></td>
                     </tr>
@@ -151,7 +156,7 @@ export const ListingDetailsPage: React.FC = () => {
                   <Gauge className="h-4 w-4 text-emerald-400" />
                   Pressure
                 </div>
-                <div className="text-xl font-mono font-bold text-white">{listing.pressureBar} bar</div>
+                <div className="text-xl font-mono font-bold text-white tabular-nums">{listing.pressureBar} bar</div>
                 <span className="text-[11px] text-slate-400">Continuous slipstream</span>
               </div>
 
@@ -160,7 +165,7 @@ export const ListingDetailsPage: React.FC = () => {
                   <Thermometer className="h-4 w-4 text-cyan-400" />
                   Temperature
                 </div>
-                <div className="text-xl font-mono font-bold text-white">{listing.temperatureC} °C</div>
+                <div className="text-xl font-mono font-bold text-white tabular-nums">{listing.temperatureC} °C</div>
                 <span className="text-[11px] text-slate-400">Cryogenic storage state</span>
               </div>
 
@@ -190,7 +195,7 @@ export const ListingDetailsPage: React.FC = () => {
             <div className="space-y-3 text-xs text-slate-300">
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">Available Volume:</span>
-                <strong className="text-white">{listing.volumeTonnes} tonnes / month</strong>
+                <strong className="text-white tabular-nums">{listing.volumeTonnes.toLocaleString()} tonnes / mo</strong>
               </div>
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">Earliest Availability:</span>
@@ -206,13 +211,16 @@ export const ListingDetailsPage: React.FC = () => {
               </div>
             </div>
 
-            <Link
-              to={`/listings/${listing.id}/bid`}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-xs sm:text-sm font-semibold text-slate-950 shadow-glow-emerald hover:bg-emerald-450 transition-all"
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              onClick={() => navigate(`/listings/${listing.id}/bid`)}
+              icon={<ArrowRight className="h-4 w-4" />}
+              iconPosition="right"
             >
-              <span>Submit Formal Off-take Bid</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+              Submit Formal Off-take Bid
+            </Button>
           </div>
 
           {/* Interactive Distance & Transit Calculator */}
@@ -239,15 +247,15 @@ export const ListingDetailsPage: React.FC = () => {
             <div className="rounded-xl bg-black/40 p-3 text-xs space-y-2 border border-white/5">
               <div className="flex justify-between">
                 <span className="text-slate-400">Corridor Transit:</span>
-                <strong className="text-white font-mono">{calcDistance} km</strong>
+                <strong className="text-white font-mono tabular-nums">{calcDistance} km</strong>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Est. Road Transit Time:</span>
-                <strong className="text-white font-mono">~{Math.round(calcDistance / 45)} hours</strong>
+                <strong className="text-white font-mono tabular-nums">~{Math.round(calcDistance / 45)} hours</strong>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Est. Transit Footprint:</span>
-                <strong className="text-emerald-400 font-mono">{(calcDistance * 12.8).toFixed(0)} kg CO₂</strong>
+                <strong className="text-emerald-400 font-mono tabular-nums">{(calcDistance * 12.8).toFixed(0)} kg CO₂</strong>
               </div>
             </div>
 

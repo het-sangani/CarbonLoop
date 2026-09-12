@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { mockMatchResults } from '../data/mockData';
 import { 
@@ -15,6 +16,7 @@ import {
 
 export const MatchResultsPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
   const [selectedMatchId, setSelectedMatchId] = useState<string>(id || 'MATCH-101');
 
   React.useEffect(() => {
@@ -58,7 +60,7 @@ export const MatchResultsPage: React.FC = () => {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono text-slate-400">{match.id}</span>
-                    <span className="text-sm font-mono font-bold text-emerald-400">
+                    <span className="text-sm font-mono font-bold text-emerald-400 tabular-nums">
                       {match.breakdown.overallScore}% Score
                     </span>
                   </div>
@@ -69,12 +71,12 @@ export const MatchResultsPage: React.FC = () => {
                       <span>{match.supplier.companyName}</span>
                     </div>
                     <div className="text-xs text-slate-400 pl-5">
-                      to {match.buyer.buyerName} ({match.breakdown.distanceKm} km)
+                      to {match.buyer.buyerName} (<span className="tabular-nums">{match.breakdown.distanceKm}</span> km)
                     </div>
                   </div>
 
                   <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>{match.supplier.composition.co2Purity}% CO₂ Stream</span>
+                    <span className="tabular-nums">{match.supplier.composition.co2Purity}% CO₂ Stream</span>
                     <span className="text-emerald-400 font-semibold">{match.breakdown.economicRating}</span>
                   </div>
                 </button>
@@ -124,13 +126,13 @@ export const MatchResultsPage: React.FC = () => {
                   {selectedMatch.supplier.companyName} ⟷ {selectedMatch.buyer.buyerName}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-                  {selectedMatch.supplier.location} to {selectedMatch.buyer.location} • Corridor: {selectedMatch.breakdown.distanceKm} km
+                  {selectedMatch.supplier.location} to {selectedMatch.buyer.location} • Corridor: <span className="tabular-nums font-mono">{selectedMatch.breakdown.distanceKm}</span> km
                 </p>
               </div>
 
               <div className="flex items-center gap-3 bg-black/40 border border-emerald-500/30 rounded-2xl px-5 py-3 text-right">
                 <div>
-                  <div className="text-3xl sm:text-4xl font-extrabold font-mono text-emerald-400">
+                  <div className="text-3xl sm:text-4xl font-extrabold font-mono text-emerald-400 tabular-nums">
                     {selectedMatch.breakdown.overallScore}%
                   </div>
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
@@ -159,15 +161,15 @@ export const MatchResultsPage: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 text-xs pt-1">
                   <div className="rounded bg-black/40 p-2">
                     <span className="text-[10px] text-slate-400 block uppercase">Purity</span>
-                    <strong className="text-emerald-400 font-mono text-sm">{selectedMatch.supplier.composition.co2Purity}%</strong>
+                    <strong className="text-emerald-400 font-mono text-sm tabular-nums">{selectedMatch.supplier.composition.co2Purity}%</strong>
                   </div>
                   <div className="rounded bg-black/40 p-2">
                     <span className="text-[10px] text-slate-400 block uppercase">Capacity</span>
-                    <strong className="text-white text-sm">{selectedMatch.supplier.volumeTonnes} t</strong>
+                    <strong className="text-white text-sm tabular-nums">{selectedMatch.supplier.volumeTonnes.toLocaleString()} t</strong>
                   </div>
                   <div className="rounded bg-black/40 p-2">
                     <span className="text-[10px] text-slate-400 block uppercase">Price</span>
-                    <strong className="text-emerald-300 font-mono text-sm">${selectedMatch.supplier.pricePerTonneUSD}/t</strong>
+                    <strong className="text-emerald-300 font-mono text-sm tabular-nums">${selectedMatch.supplier.pricePerTonneUSD}/t</strong>
                   </div>
                 </div>
               </div>
@@ -188,15 +190,15 @@ export const MatchResultsPage: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 text-xs pt-1">
                   <div className="rounded bg-black/40 p-2">
                     <span className="text-[10px] text-slate-400 block uppercase">Min Purity</span>
-                    <strong className="text-cyan-400 font-mono text-sm">&gt; {selectedMatch.buyer.minPurityPercentage}%</strong>
+                    <strong className="text-cyan-400 font-mono text-sm tabular-nums">&gt; {selectedMatch.buyer.minPurityPercentage}%</strong>
                   </div>
                   <div className="rounded bg-black/40 p-2">
                     <span className="text-[10px] text-slate-400 block uppercase">Demand</span>
-                    <strong className="text-white text-sm">{selectedMatch.buyer.volumeNeededTonnes} t</strong>
+                    <strong className="text-white text-sm tabular-nums">{selectedMatch.buyer.volumeNeededTonnes.toLocaleString()} t</strong>
                   </div>
                   <div className="rounded bg-black/40 p-2">
                     <span className="text-[10px] text-slate-400 block uppercase">Ceiling</span>
-                    <strong className="text-cyan-300 font-mono text-sm">${selectedMatch.buyer.targetPricePerTonneUSD}/t</strong>
+                    <strong className="text-cyan-300 font-mono text-sm tabular-nums">${selectedMatch.buyer.targetPricePerTonneUSD}/t</strong>
                   </div>
                 </div>
               </div>
@@ -249,23 +251,26 @@ export const MatchResultsPage: React.FC = () => {
                   {selectedMatch.breakdown.recommendedModality}
                 </span>
                 <span>•</span>
-                <span>Transit: ~{selectedMatch.breakdown.estimatedTransitEmissionsKg} kg CO₂</span>
+                <span>Transit: ~<span className="tabular-nums font-mono">{selectedMatch.breakdown.estimatedTransitEmissionsKg}</span> kg CO₂</span>
               </div>
 
               <div className="flex items-center gap-3">
-                <Link
-                  to={`/listings/${selectedMatch.supplyListingId}`}
-                  className="rounded-xl border border-white/10 bg-slate-800/80 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition-colors"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/listings/${selectedMatch.supplyListingId}`)}
                 >
                   Inspect Stream Specs
-                </Link>
-                <Link
-                  to={`/listings/${selectedMatch.supplyListingId}/bid`}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-450 px-5 py-2.5 text-xs font-semibold text-slate-950 shadow-glow-emerald transition-all hover:scale-[1.02]"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate(`/listings/${selectedMatch.supplyListingId}/bid`)}
+                  icon={<ArrowRight className="h-4 w-4" />}
+                  iconPosition="right"
                 >
-                  <span>Submit RFP / Bid</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                  Submit RFP / Bid
+                </Button>
               </div>
             </div>
 

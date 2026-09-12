@@ -10,6 +10,8 @@ import {
   Mail, 
   Building
 } from 'lucide-react';
+import { Button } from '../components/common/Button';
+import { AlertBanner } from '../components/common/AlertBanner';
 
 export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,9 +21,27 @@ export const AuthPage: React.FC = () => {
   const [password, setPassword] = useState('••••••••••••');
   const [orgName, setOrgName] = useState('ABC Cement Ltd');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please provide a valid corporate email address.');
+      return;
+    }
+
+    if (!password || password.length < 4) {
+      setErrorMessage('Password must be at least 4 characters.');
+      return;
+    }
+
+    if (mode === 'register' && !orgName.trim()) {
+      setErrorMessage('Organization name is required to register an industrial node.');
+      return;
+    }
+
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
@@ -135,6 +155,16 @@ export const AuthPage: React.FC = () => {
             </button>
           </div>
 
+          {errorMessage && (
+            <div className="mb-4">
+              <AlertBanner
+                type="error"
+                message={errorMessage}
+                onDismiss={() => setErrorMessage(null)}
+              />
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Role Select */}
@@ -143,7 +173,10 @@ export const AuthPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setRole('supplier')}
+                  onClick={() => {
+                    setRole('supplier');
+                    setErrorMessage(null);
+                  }}
                   className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-semibold transition-all ${
                     role === 'supplier'
                       ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400'
@@ -155,7 +188,10 @@ export const AuthPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole('buyer')}
+                  onClick={() => {
+                    setRole('buyer');
+                    setErrorMessage(null);
+                  }}
                   className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-semibold transition-all ${
                     role === 'buyer'
                       ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
@@ -179,7 +215,7 @@ export const AuthPage: React.FC = () => {
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
                     placeholder="e.g. ABC Cement Ltd"
-                    className="w-full rounded-xl border border-white/10 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -194,9 +230,12 @@ export const AuthPage: React.FC = () => {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                   placeholder="name@company.com"
-                  className="w-full rounded-xl border border-white/10 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none transition-colors"
                 />
               </div>
             </div>
@@ -217,27 +256,28 @@ export const AuthPage: React.FC = () => {
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none transition-colors"
                 />
               </div>
             </div>
 
             {/* Submit Button */}
-            <button
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-semibold text-slate-950 shadow-glow-emerald transition-all hover:bg-emerald-450 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+              variant="primary"
+              size="lg"
+              isLoading={isLoading}
+              loadingText="Verifying Industrial Identity..."
+              icon={ArrowRight}
+              iconPosition="right"
+              className="w-full mt-2"
             >
-              {isLoading ? (
-                <span>Authenticating...</span>
-              ) : (
-                <>
-                  <span>{mode === 'signin' ? `Enter as ${role === 'supplier' ? 'Supplier' : 'Buyer'}` : 'Complete Registration'}</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
+              {mode === 'signin' ? `Enter as ${role === 'supplier' ? 'Supplier' : 'Buyer'}` : 'Complete Registration'}
+            </Button>
           </form>
 
           {/* Footer Security Guarantee */}

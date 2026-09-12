@@ -40,7 +40,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         <div className="flex items-center justify-between text-xs">
           {label && <span className="text-slate-400 font-medium">{label}</span>}
           {showValue && (
-            <span className="font-semibold text-slate-200">
+            <span className="font-semibold text-slate-200 tabular-nums">
               {value}{valueSuffix}
             </span>
           )}

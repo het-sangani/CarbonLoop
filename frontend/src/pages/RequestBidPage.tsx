@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
+import { AlertBanner } from '../components/common/AlertBanner';
 import { mockSupplyListings } from '../data/mockData';
 import { 
   Factory, 
@@ -18,6 +20,7 @@ export const RequestBidPage: React.FC = () => {
   const listing = mockSupplyListings.find(l => l.id === id) || mockSupplyListings[0];
 
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [buyerName, setBuyerName] = useState('GreenFuel SynTech Ltd');
   const [buyerFacility, setBuyerFacility] = useState('Vadodara Power-to-X Synthesis Hub');
   const [offeredPrice, setOfferedPrice] = useState(42);
@@ -35,12 +38,29 @@ export const RequestBidPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    if (!buyerName.trim() || !buyerFacility.trim()) {
+      setErrorMessage('Please specify your buyer organization and receiving destination facility.');
+      return;
+    }
+
+    if (offeredPrice <= 0) {
+      setErrorMessage('Offered unit price must be greater than $0/tonne.');
+      return;
+    }
+
+    if (requestedVolume <= 0) {
+      setErrorMessage('Requested volume must be greater than 0 tonnes/month.');
+      return;
+    }
+
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      // Navigate directly to transaction status page!
+      // Navigate directly to transaction status page
       navigate('/transactions/TXN-8801');
-    }, 800);
+    }, 700);
   };
 
   return (
@@ -49,13 +69,14 @@ export const RequestBidPage: React.FC = () => {
       subtitle={`Formulate formal bilateral procurement proposal for ${listing.companyName} (${listing.facilityName}).`}
       badge="Bilateral RFP Contracting"
       action={
-        <Link
-          to={`/listings/${listing.id}`}
-          className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/80 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(`/listings/${listing.id}`)}
+          icon={<ArrowLeft className="h-4 w-4" />}
         >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to Specs</span>
-        </Link>
+          Back to Specs
+        </Button>
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -77,6 +98,15 @@ export const RequestBidPage: React.FC = () => {
             </div>
             <Badge variant="emerald">Listing Floor: ${listing.pricePerTonneUSD}/t</Badge>
           </div>
+
+          {errorMessage && (
+            <AlertBanner
+              variant="error"
+              title="Bid Formulation Error"
+              message={errorMessage}
+              onClose={() => setErrorMessage(null)}
+            />
+          )}
 
           <form onSubmit={handleSubmit} className="glass-panel rounded-2xl p-6 sm:p-8 space-y-6 border-white/10">
             
@@ -194,20 +224,18 @@ export const RequestBidPage: React.FC = () => {
 
             {/* Submit */}
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3.5 text-sm font-semibold text-slate-950 shadow-glow-emerald hover:bg-emerald-450 transition-all disabled:opacity-50"
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={isLoading}
+                loadingText="Executing Smart Term Sheet..."
+                icon={<ArrowRight className="h-4 w-4" />}
+                iconPosition="right"
               >
-                {isLoading ? (
-                  <span>Executing Smart Term Sheet...</span>
-                ) : (
-                  <>
-                    <span>Submit Binding Commercial Bid</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
+                Submit Binding Commercial Bid
+              </Button>
             </div>
 
           </form>
@@ -228,21 +256,21 @@ export const RequestBidPage: React.FC = () => {
               <div className="space-y-3 pt-2 text-xs border-b border-white/10 pb-4">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Offered Unit Rate:</span>
-                  <span className="font-mono text-white">${offeredPrice}.00 / tonne</span>
+                  <span className="font-mono text-white tabular-nums">${offeredPrice}.00 / tonne</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Monthly Volume:</span>
-                  <span className="font-bold text-white">{requestedVolume} tonnes</span>
+                  <span className="font-bold text-white tabular-nums">{requestedVolume.toLocaleString()} tonnes</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Monthly Run-Rate:</span>
-                  <span className="font-mono font-bold text-emerald-400 text-sm">
+                  <span className="font-mono font-bold text-emerald-400 text-sm tabular-nums">
                     ${totalMonthlyValue.toLocaleString()} / mo
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Contract Total ({durationMonths} mo):</span>
-                  <span className="font-mono font-bold text-white text-base">
+                  <span className="font-mono font-bold text-white text-base tabular-nums">
                     ${annualValue.toLocaleString()}
                   </span>
                 </div>
@@ -255,15 +283,15 @@ export const RequestBidPage: React.FC = () => {
                 </span>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Gross CO₂ Sequestered:</span>
-                  <strong className="text-white">{requestedVolume} tonnes / mo</strong>
+                  <strong className="text-white tabular-nums">{requestedVolume.toLocaleString()} tonnes / mo</strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Logistics Transit Emissions:</span>
-                  <span className="text-rose-400 font-mono">-1.42 tonnes</span>
+                  <span className="text-rose-400 font-mono tabular-nums">-1.42 tonnes</span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-white/5">
                   <span className="text-slate-300 font-semibold">Net Avoided Footprint:</span>
-                  <strong className="text-emerald-400 font-mono text-sm">
+                  <strong className="text-emerald-400 font-mono text-sm tabular-nums">
                     {netAvoidedEmissions.toFixed(2)} tCO₂e / mo
                   </strong>
                 </div>

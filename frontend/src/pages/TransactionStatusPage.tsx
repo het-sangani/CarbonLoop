@@ -1,7 +1,9 @@
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
+import { AlertBanner } from '../components/common/AlertBanner';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { mockTransactions } from '../data/mockData';
 import { 
@@ -18,7 +20,9 @@ import {
 
 export const TransactionStatusPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
   const txn = mockTransactions.find(t => t.id === id) || mockTransactions[0];
+  const [notification, setNotification] = useState<{ variant: 'info' | 'success'; title: string; message: string } | null>(null);
 
   const stages = [
     { title: 'Term Sheet Executed', status: 'completed', date: '2026-09-11 15:40' },
@@ -34,23 +38,37 @@ export const TransactionStatusPage: React.FC = () => {
       badge={`Contract Status • ${txn.lifecycleStage}`}
       action={
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => alert('Custody Transfer Certificate ISO-14064 generated and verified!')}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition-colors"
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => setNotification({
+              variant: 'success',
+              title: 'ISO-14064 Audit Certificate Generated',
+              message: `Certificate hash SHA-256: 0x9f8b...3e1a generated for transaction ${txn.id}. Ready for compliance verification.`
+            })}
+            icon={<Download className="h-4 w-4" />}
           >
-            <Download className="h-4 w-4" />
-            <span>Export ISO Audit Cert</span>
-          </button>
-          <Link
-            to="/marketplace"
-            className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-450 px-3.5 py-2 text-xs font-semibold text-slate-950 shadow-glow-emerald transition-all"
+            Export ISO Audit Cert
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/marketplace')}
           >
-            <span>Marketplace</span>
-          </Link>
+            Marketplace
+          </Button>
         </div>
       }
     >
       <div className="space-y-8">
+        {notification && (
+          <AlertBanner
+            variant={notification.variant}
+            title={notification.title}
+            message={notification.message}
+            onClose={() => setNotification(null)}
+          />
+        )}
         
         {/* Top Deal Summary Card */}
         <div className="glass-panel rounded-2xl p-6 sm:p-8 border-emerald-500/20 bg-gradient-to-r from-emerald-950/20 via-slate-900/60 to-cyan-950/20">
@@ -73,7 +91,7 @@ export const TransactionStatusPage: React.FC = () => {
                 <Truck className="h-4 w-4 animate-bounce" />
                 {txn.transitModality}
               </span>
-              <div className="text-xl font-bold font-mono text-white">
+              <div className="text-xl font-bold font-mono text-white tabular-nums">
                 {txn.distanceKm} km
               </div>
               <span className="text-[11px] text-slate-400">Via NH-48 Express Corridor</span>
@@ -95,13 +113,13 @@ export const TransactionStatusPage: React.FC = () => {
               <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 Settled Value
               </span>
-              <div className="text-2xl font-mono font-bold text-emerald-400">
+              <div className="text-2xl font-mono font-bold text-emerald-400 tabular-nums">
                 ${txn.totalValueUSD.toLocaleString()}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 tabular-nums">
                 {txn.volumeTonnes} tonnes @ ${txn.pricePerTonneUSD}/t
               </p>
-              <Badge variant="emerald" className="mt-1">In Transit</Badge>
+              <Badge variant="emerald" withDot pulse className="mt-1">In Transit</Badge>
             </div>
 
           </div>
@@ -178,15 +196,15 @@ export const TransactionStatusPage: React.FC = () => {
               </div>
               <div className="flex justify-between items-center py-1 border-b border-white/5">
                 <span className="text-slate-400">Gross Point-Source Abatement:</span>
-                <strong className="text-white font-mono">{txn.grossEmissionsAvoidedTonnes.toFixed(2)} tCO₂</strong>
+                <strong className="text-white font-mono tabular-nums">{txn.grossEmissionsAvoidedTonnes.toFixed(2)} tCO₂</strong>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-white/5">
                 <span className="text-slate-400">Logistics Transport Deductions (Road Cryo):</span>
-                <span className="text-rose-400 font-mono">-{txn.logisticsTransitEmissionsTonnes.toFixed(2)} tCO₂</span>
+                <span className="text-rose-400 font-mono tabular-nums">-{txn.logisticsTransitEmissionsTonnes.toFixed(2)} tCO₂</span>
               </div>
               <div className="flex justify-between items-center pt-2">
                 <span className="text-sm font-bold text-white">Net Credited Circular CO₂:</span>
-                <span className="text-base font-bold font-mono text-emerald-400">
+                <span className="text-base font-bold font-mono text-emerald-400 tabular-nums">
                   {txn.netCarbonImpactTonnes.toFixed(2)} tCO₂e
                 </span>
               </div>
@@ -205,19 +223,25 @@ export const TransactionStatusPage: React.FC = () => {
               <div className="mt-3 space-y-2 text-xs text-slate-400">
                 <div><strong>Carrier:</strong> Gujarat Cryo-Logistics Fleet #24</div>
                 <div><strong>Driver / Telemetry:</strong> Ramesh Solanki (GPS Active)</div>
-                <div><strong>Tank Pressure:</strong> 18.2 bar (Stable)</div>
-                <div><strong>Boil-off Vapor Rate:</strong> 0.04% / hr (Optimal)</div>
+                <div><strong>Tank Pressure:</strong> <span className="tabular-nums font-mono">18.2</span> bar (Stable)</div>
+                <div><strong>Boil-off Vapor Rate:</strong> <span className="tabular-nums font-mono">0.04%</span> / hr (Optimal)</div>
               </div>
             </div>
 
             <div className="pt-4 border-t border-white/10 flex flex-col gap-2">
-              <button 
-                onClick={() => alert('Logistics dispatcher hotline: +91 79 2658 9000')}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-xs font-semibold text-white transition-colors"
+              <Button 
+                variant="secondary"
+                size="md"
+                fullWidth
+                onClick={() => setNotification({
+                  variant: 'info',
+                  title: 'Logistics Dispatcher Contact Info',
+                  message: 'Direct Line: +91 79 2658 9000 (Dispatch ID: GUJ-CRYO-24). Available 24/7 for cryo-fleet telemetry and rerouting.'
+                })}
+                icon={<PhoneCall className="h-4 w-4 text-emerald-400" />}
               >
-                <PhoneCall className="h-4 w-4 text-emerald-400" />
-                <span>Contact Logistics Hotline</span>
-              </button>
+                Contact Logistics Hotline
+              </Button>
             </div>
           </div>
 

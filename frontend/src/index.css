@@ -46,14 +46,22 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.glass-panel-subtle {
+  background: rgba(9, 13, 20, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-panel-hover:hover {
   background: rgba(18, 25, 39, 0.85);
   border-color: rgba(16, 185, 129, 0.3);
   transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 .glass-card-glow {
@@ -74,3 +82,57 @@ h1, h2, h3, h4, h5, h6 {
 .glass-card-glow:hover::before {
   opacity: 1;
 }
+
+/* Tabular figures for telemetry, currency, and chemical metrics */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Interactive Input Styling */
+.form-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(15, 23, 42, 0.7);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.form-input::placeholder {
+  color: #64748b;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.form-input-error {
+  border-color: rgba(244, 63, 94, 0.7) !important;
+  background-color: rgba(244, 63, 94, 0.05) !important;
+}
+
+.form-input-error:focus {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
+}
+
+/* Responsive Table Styling */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table-row-hover {
+  transition: background-color 0.15s ease;
+}
+
+.table-row-hover:hover {
+  background-color: rgba(30, 41, 59, 0.4);
+}
+

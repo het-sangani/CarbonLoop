@@ -5,10 +5,11 @@ import {
   SlidersHorizontal, 
   Building2, 
   Factory, 
-  MapPin, 
-  Cpu, 
+  PlusCircle, 
+  Truck, 
   Info,
-  X
+  X,
+  LogIn
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,19 +20,32 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const sections = [
     {
-      title: 'Platform Navigation',
+      title: 'Marketplace Navigation',
       items: [
-        { label: 'Marketplace Home', path: '/', icon: Compass },
-        { label: 'Feedstock & Streams', path: '/marketplace', icon: Building2 },
-        { label: 'Matching Algorithm', path: '/matching', icon: SlidersHorizontal },
+        { label: 'Overview Home', path: '/', icon: Compass },
+        { label: 'CO₂ Marketplace', path: '/marketplace', icon: Building2 },
+        { label: 'Match Results (ABC ⟷ GreenFuel)', path: '/matches/MATCH-101', icon: SlidersHorizontal },
+        { label: 'Transaction Status (Live)', path: '/transactions/TXN-8801', icon: Truck },
       ]
     },
     {
-      title: 'Facility Types',
+      title: 'Supplier Hub (ABC Cement)',
       items: [
-        { label: 'Capture Point Sources', path: '/marketplace?type=emitter', icon: Factory },
-        { label: 'Utilization Off-takers', path: '/marketplace?type=offtaker', icon: Cpu },
-        { label: 'Transport Hubs', path: '/marketplace?type=logistics', icon: MapPin },
+        { label: 'Supplier Dashboard', path: '/dashboard/supplier', icon: Factory },
+        { label: 'Create Supply Listing', path: '/supplier/create-listing', icon: PlusCircle },
+      ]
+    },
+    {
+      title: 'Buyer Hub (GreenFuel)',
+      items: [
+        { label: 'Buyer Dashboard', path: '/dashboard/buyer', icon: Building2 },
+        { label: 'Create Requirement', path: '/buyer/create-requirement', icon: PlusCircle },
+      ]
+    },
+    {
+      title: 'Identity & Access',
+      items: [
+        { label: 'Sign In / Switch Org', path: '/auth', icon: LogIn },
       ]
     }
   ];
@@ -69,10 +83,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             {/* Section Lists */}
             {sections.map((section, idx) => (
               <div key={idx} className="space-y-1.5">
-                <h3 className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <h3 className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                   {section.title}
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {section.items.map((item, itemIdx) => {
                     const Icon = item.icon;
                     return (
@@ -83,15 +97,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                           if (window.innerWidth < 1024) onClose();
                         }}
                         className={({ isActive }) => 
-                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                          `flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                             isActive
                               ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                               : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
                           }`
                         }
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span>{item.label}</span>
+                        <Icon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{item.label}</span>
                       </NavLink>
                     );
                   })}
@@ -99,29 +113,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
             ))}
 
-            {/* Quick Summary Card */}
-            <div className="rounded-xl border border-white/10 bg-gradient-to-b from-slate-900/90 to-slate-950/90 p-3.5 shadow-sm">
+            {/* Match Preview Badge */}
+            <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-b from-emerald-950/20 to-slate-950/90 p-3 shadow-sm">
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
-                <Info className="h-4 w-4" />
-                <span>Weighted Match Engine</span>
+                <Info className="h-3.5 w-3.5" />
+                <span>Active Prototype Match</span>
               </div>
-              <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
-                Multi-parameter scoring accounts for CO₂ purity, state, volume, transport radius, and economics.
+              <p className="mt-1 text-[11px] text-slate-400 leading-relaxed">
+                <strong>ABC Cement</strong> (500t @ 96%) matched with <strong>GreenFuel</strong> (300t @ 95%) with 96% score.
               </p>
             </div>
           </div>
 
-          {/* Bottom links */}
-          <div className="pt-4 border-t border-white/10 text-xs text-slate-400 space-y-2">
-            <div className="flex items-center justify-between">
-              <span>Engine Status</span>
+          {/* Bottom status */}
+          <div className="pt-4 border-t border-white/10 text-xs text-slate-400 space-y-1">
+            <div className="flex items-center justify-between text-[11px]">
+              <span>Rule-Based Match Engine</span>
               <span className="flex items-center gap-1.5 text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Operational
+                Active
               </span>
             </div>
-            <div className="text-[11px] text-slate-400">
-              CarbonLoop Protocol v0.1.0
+            <div className="text-[10px] text-slate-400">
+              CarbonLoop Gujarat CCUS Pilot
             </div>
           </div>
         </div>

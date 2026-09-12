@@ -12,8 +12,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Determine if sidebar should be shown by default or accessible
-  const showSidebar = location.pathname.startsWith('/marketplace') || location.pathname.startsWith('/matching');
+  // Determine if sidebar should be shown by default on desktop
+  const showDesktopSidebar = location.pathname.startsWith('/marketplace');
 
   return (
     <div className="flex min-h-screen flex-col bg-[#080b11] text-slate-100 selection:bg-emerald-500 selection:text-black">
@@ -25,14 +25,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       {/* Main Layout Area */}
       <div className="flex flex-1">
-        {showSidebar && (
+        {(showDesktopSidebar || sidebarOpen) && (
           <Sidebar 
             isOpen={sidebarOpen} 
             onClose={() => setSidebarOpen(false)} 
           />
         )}
 
-        <main className={`flex-1 overflow-x-hidden ${showSidebar ? 'lg:pl-0' : ''}`}>
+        <main className={`flex-1 overflow-x-hidden ${showDesktopSidebar ? 'lg:pl-0' : ''}`}>
           {children || <Outlet />}
         </main>
       </div>

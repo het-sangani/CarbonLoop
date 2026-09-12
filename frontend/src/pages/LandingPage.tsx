@@ -101,11 +101,36 @@ export const LandingPage: React.FC = () => {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                to="/matching"
+                to="/matches/MATCH-101"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 hover:border-slate-700"
               >
                 <Sliders className="h-4 w-4 text-emerald-400" />
-                <span>Test Matching Engine</span>
+                <span>Test Matching Engine (96% Fit)</span>
+              </Link>
+            </div>
+
+            {/* Quick Demo Access Bar */}
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <span className="text-xs text-slate-400 font-medium">Quick Demo:</span>
+              <Link
+                to="/dashboard/supplier"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-all"
+              >
+                <Factory className="h-3.5 w-3.5" />
+                ABC Cement (Supplier)
+              </Link>
+              <Link
+                to="/dashboard/buyer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-400 hover:bg-cyan-500/20 transition-all"
+              >
+                <Building className="h-3.5 w-3.5" />
+                GreenFuel (Buyer)
+              </Link>
+              <Link
+                to="/transactions/TXN-8801"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-all"
+              >
+                <span>Live Transaction</span>
               </Link>
             </div>
 
@@ -237,6 +262,18 @@ export const LandingPage: React.FC = () => {
                 <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
                   <div className="h-full bg-cyan-400 rounded-full" style={{ width: '95%' }} />
                 </div>
+              </div>
+
+              {/* Card Footer Link */}
+              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Pair: ABC Cement ⟷ GreenFuel</span>
+                <Link
+                  to="/matches/MATCH-101"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+                >
+                  <span>Inspect Full Algorithm Diagnostics</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
 
             </div>

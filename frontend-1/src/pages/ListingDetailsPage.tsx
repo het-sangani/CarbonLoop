@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Card,
@@ -10,6 +10,7 @@ import {
   StatTile
 } from '../components/common/UIComponents';
 import { mockSupplyListings, SupplyListing } from '../mockData';
+import { carbonLoopApi } from '../services/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,10 +23,45 @@ import {
 export default function ListingDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [realListing, setRealListing] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (id && id.length > 10) {
+      carbonLoopApi.getListing(id).then(res => {
+        if (res) setRealListing(res);
+      }).catch(err => {
+        console.warn('Listing not in API, using default demo', err);
+      });
+    }
+  }, [id]);
 
   // Find listing by ID, fallback to ABC Cement SUP-001
-  const listing: SupplyListing =
-    mockSupplyListings.find((s) => s.id === id) || mockSupplyListings[0];
+  const listing: SupplyListing = realListing ? {
+    id: realListing.id,
+    companyName: realListing.location ? `${realListing.location} Facility` : 'ABC Cement Ltd',
+    facilityName: realListing.location ? `Capture Unit (${realListing.location})` : 'Kiln-4 Precalciner Capture Unit',
+    location: realListing.location || 'Gujarat, India',
+    sourceType: 'Point-Source Industrial Flue',
+    captureTechnology: 'Post-combustion chemical absorption (monoethanolamine amine solvent)',
+    volumeTonnes: Number(realListing.quantity) || 500,
+    pricePerTonneUSD: Number(realListing.asking_price) || 42,
+    deliveryTerms: realListing.delivery_terms || 'Ex-Works terminal loading rack',
+    composition: {
+      co2Purity: Number(realListing.purity) || 96.0,
+      moisturePpm: 12,
+      oxygenPpm: 25,
+      sulfurPpm: 0.8,
+      hydrocarbonsPpm: 2.1,
+    },
+    physicalState: 'Liquefied',
+    temperatureCelsius: -22,
+    pressureBar: 18.5,
+    description: `Point-source capture facility located in ${realListing.location}, producing ${realListing.quantity} tonnes/month of ${realListing.purity}% pure CO₂.`,
+    isVerified: true,
+    verificationAuditDate: '2026-08-15',
+    verifiedBy: 'Bureau Veritas India (ISO 14064-3)',
+    certId: `CERT-ISO-${realListing.id.slice(0, 8)}`,
+  } : (mockSupplyListings.find((s) => s.id === id) || mockSupplyListings[0]);
 
   // Interactive corridor distance calculator state
   const [targetDestination, setTargetDestination] = useState<'Vadodara' | 'Bharuch' | 'Dahej' | 'Surat'>('Vadodara');

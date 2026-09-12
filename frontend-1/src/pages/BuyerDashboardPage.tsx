@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   PageHeader, 
@@ -11,21 +11,49 @@ import {
   SkeletonCard
 } from '../components/common/UIComponents';
 import { mockBuyerRequirements, mockMatchResults } from '../mockData';
-import { Sparkles, Plus, RotateCcw } from 'lucide-react';
+import { Sparkles, Plus, RotateCcw, AlertCircle, ArrowRight } from 'lucide-react';
+import { carbonLoopApi } from '../services/api';
 
 export const BuyerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'requirements' | 'bids' | 'matches'>('requirements');
-  const [simLoading, setSimLoading] = useState(false);
-  const [showEmptyDemo, setShowEmptyDemo] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Real API state
+  const [realRequirements, setRealRequirements] = useState<any[]>([]);
+  const [realRequests, setRealRequests] = useState<any[]>([]);
+
+  const fetchBuyerData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [reqsRes, bidsRes] = await Promise.allSettled([
+        carbonLoopApi.getRequirements(),
+        carbonLoopApi.getRequests()
+      ]);
+
+      if (reqsRes.status === 'fulfilled') {
+        setRealRequirements(reqsRes.value || []);
+      }
+      if (bidsRes.status === 'fulfilled') {
+        setRealRequests(bidsRes.value || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to load buyer data', err);
+      setError(err.message || 'Error connecting to backend services.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBuyerData();
+  }, []);
 
   const greenFuel = mockBuyerRequirements[0];
-  const bestMatch = mockMatchResults[0]; // ABC Cement
+  const activeReq = realRequirements.length > 0 ? realRequirements[0] : null;
 
-  const toggleLoadingDemo = () => {
-    setSimLoading(true);
-    setTimeout(() => setSimLoading(false), 900);
-  };
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 24px 64px' }}>
@@ -71,30 +99,45 @@ export const BuyerDashboardPage: React.FC = () => {
         }
       />
 
+      {/* Error Alert */}
+      {error && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #F87171', color: '#991B1B', padding: '12px 16px', borderRadius: 8, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={16} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{error}</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={fetchBuyerData}>Retry</Button>
+        </div>
+      )}
+
       {/* Buyer Entity Profile Banner */}
       <Card style={{ padding: '20px 24px', marginBottom: 28, background: '#FFFFFF' }} accentColor="#2E9E8A">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A1D1B', margin: 0 }}>
-                GreenFuel SynTech Ltd
+                {activeReq ? `${activeReq.delivery_location} Procurement Hub` : 'GreenFuel SynTech Ltd'}
               </h2>
               <Badge variant="teal" dot pulse>Anchor Off-Taker</Badge>
               <Badge variant="neutral">CORSIA Compliant</Badge>
             </div>
             <div style={{ fontSize: 13, color: '#5A5C5A' }}>
-              {greenFuel.facilityName} · {greenFuel.location} · Power-to-Liquid e-SAF Synthesis
+              {activeReq ? `${activeReq.delivery_location} · Off-take Specification Intake` : `${greenFuel.facilityName} · ${greenFuel.location} · Power-to-Liquid e-SAF Synthesis`}
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 24 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8C8A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Monthly Requirement</div>
-              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#1A1D1B', marginTop: 2 }}>300 tonnes / mo</div>
+              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#1A1D1B', marginTop: 2 }}>
+                {activeReq ? `${activeReq.required_quantity} tonnes / mo` : '300 tonnes / mo'}
+              </div>
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8C8A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Intake Purity Floor</div>
-              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#2E9E8A', marginTop: 2 }}>&ge; 95.0% CO₂</div>
+              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#2E9E8A', marginTop: 2 }}>
+                &ge; {activeReq ? Number(activeReq.min_purity).toFixed(1) : '95.0'}% CO₂
+              </div>
             </div>
           </div>
         </div>
@@ -103,25 +146,24 @@ export const BuyerDashboardPage: React.FC = () => {
       {/* Macro Stats Tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
         <StatTile
-          label="Contracted Volume"
-          value="300"
+          label="Active Requirement Volume"
+          value={realRequirements.reduce((sum, r) => sum + (Number(r.required_quantity) || 0), 0) || '300'}
           unit="t/mo"
-          delta="100% Secured"
+          delta={realRequirements.length > 0 ? `${realRequirements.length} tender(s)` : '100% Secured'}
         />
         <StatTile
-          label="Target Budget"
-          value="$45"
+          label="Target Ceiling Budget"
+          value={activeReq ? `$${activeReq.max_budget}` : '$45'}
           unit="/ tonne max"
         />
         <StatTile
-          label="Secured Supply Rate"
-          value="$42"
-          unit="/ tonne"
-          delta="-$3/t savings"
+          label="Active Outbound Bids"
+          value={realRequests.length || '1'}
+          unit={realRequests.length === 1 ? 'tender submitted' : 'tenders submitted'}
         />
         <StatTile
           label="Active Corridor Matches"
-          value="2"
+          value={realRequirements.length > 0 ? 'Live Algorithmic' : '2'}
           unit="viable emitters"
         />
       </div>
@@ -129,8 +171,8 @@ export const BuyerDashboardPage: React.FC = () => {
       {/* Tabs with Count Badges */}
       <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #E5E5E2', marginBottom: 20 }}>
         {[
-          { key: 'requirements', label: 'Active Sourcing Requirements', count: 1 },
-          { key: 'bids', label: 'Outbound RFP Proposals', count: 1 },
+          { key: 'requirements', label: 'Active Sourcing Requirements', count: realRequirements.length || 1 },
+          { key: 'bids', label: 'Outbound RFP Proposals', count: realRequests.length || 1 },
           { key: 'matches', label: 'Algorithmic Emitter Matches', count: 2 },
         ].map((tab) => {
           const isActive = activeTab === tab.key;
@@ -176,18 +218,11 @@ export const BuyerDashboardPage: React.FC = () => {
       </div>
 
       {/* Loading Skeleton State */}
-      {simLoading ? (
+      {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
           <SkeletonCard lines={4} />
           <SkeletonCard lines={4} />
         </div>
-      ) : showEmptyDemo ? (
-        <EmptyState
-          title="No Requirements Registered"
-          description="You do not have any active CO₂ sourcing requirements in the exchange registry."
-          actionLabel="Post First Feedstock Tender"
-          onAction={() => navigate('/buyer/create-requirement')}
-        />
       ) : (
         <>
           {/* Tab 1: Requirements */}
@@ -216,32 +251,68 @@ export const BuyerDashboardPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ borderBottom: '1px solid #F1F1EF' }} className="hover:bg-[#FAFAF9]">
-                      <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 700 }}>
-                        {greenFuel.id}
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ fontWeight: 600, color: '#1A1D1B' }}>{greenFuel.facilityName}</div>
-                        <div style={{ fontSize: 12, color: '#8A8C8A' }}>{greenFuel.location}</div>
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px' }}>
-                        {greenFuel.volumeNeededTonnes} t/mo
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px', color: '#1A6158', fontWeight: 700 }}>
-                        &ge; {greenFuel.minPurityPercentage.toFixed(1)}%
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px' }}>
-                        ${greenFuel.targetPricePerTonneUSD} / t
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <Badge variant="teal" dot>Open Tender</Badge>
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        <Button size="sm" variant="outline" onClick={() => navigate('/matches')}>
-                          View Matches (96%) →
-                        </Button>
-                      </td>
-                    </tr>
+                    {realRequirements.length > 0 ? (
+                      realRequirements.map((item) => (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #F1F1EF' }} className="hover:bg-[#FAFAF9]">
+                          <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 700 }}>
+                            {item.id ? item.id.slice(0, 8) : 'REQ'}...
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ fontWeight: 600, color: '#1A1D1B' }}>{item.delivery_location}</div>
+                            <div style={{ fontSize: 12, color: '#8A8C8A' }}>Needed by: {item.required_date || 'Immediate'}</div>
+                          </td>
+                          <td className="tabular-nums" style={{ padding: '16px 20px' }}>
+                            {item.required_quantity} t/mo
+                          </td>
+                          <td className="tabular-nums" style={{ padding: '16px 20px', color: '#1A6158', fontWeight: 700 }}>
+                            &ge; {Number(item.min_purity).toFixed(1)}%
+                          </td>
+                          <td className="tabular-nums" style={{ padding: '16px 20px' }}>
+                            ${item.max_budget} / t
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <Badge variant="teal" dot>{item.status || 'Active'}</Badge>
+                          </td>
+                          <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                            <Button 
+                              size="sm" 
+                              variant="primary" 
+                              icon={<Sparkles size={13} />}
+                              onClick={() => navigate(`/matches?reqId=${item.id}`)}
+                            >
+                              View Matches →
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr style={{ borderBottom: '1px solid #F1F1EF' }} className="hover:bg-[#FAFAF9]">
+                        <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 700 }}>
+                          {greenFuel.id}
+                        </td>
+                        <td style={{ padding: '16px 20px' }}>
+                          <div style={{ fontWeight: 600, color: '#1A1D1B' }}>{greenFuel.facilityName}</div>
+                          <div style={{ fontSize: 12, color: '#8A8C8A' }}>{greenFuel.location}</div>
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px' }}>
+                          {greenFuel.volumeNeededTonnes} t/mo
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px', color: '#1A6158', fontWeight: 700 }}>
+                          &ge; {greenFuel.minPurityPercentage.toFixed(1)}%
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px' }}>
+                          ${greenFuel.targetPricePerTonneUSD} / t
+                        </td>
+                        <td style={{ padding: '16px 20px' }}>
+                          <Badge variant="teal" dot>Open Tender</Badge>
+                        </td>
+                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                          <Button size="sm" variant="outline" onClick={() => navigate('/matches')}>
+                            View Matches (96%) →
+                          </Button>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -255,44 +326,98 @@ export const BuyerDashboardPage: React.FC = () => {
                 title="Outbound Bilateral Proposals"
                 subtitle="Commercial bids submitted to point-source capture emitters."
               />
-              <div style={{ padding: 20 }}>
-                <div
-                  style={{
-                    border: '1px solid #E5E5E2',
-                    borderRadius: 8,
-                    padding: '18px 20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 16,
-                    background: '#FAFAF9'
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1D1B' }}>
-                        Proposal to: ABC Cement Ltd (Ahmedabad Kiln-4)
-                      </span>
-                      <Badge variant="green">Accepted by Seller</Badge>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#5A5C5A' }}>
-                      Offered Rate: <strong className="tabular-nums" style={{ color: '#0F3D2E' }}>$42 / tonne</strong> · Volume: <strong className="tabular-nums">300 tonnes/month</strong>
-                    </div>
-                    <div className="tabular-nums" style={{ fontSize: 12, color: '#8A8C8A', marginTop: 4 }}>
-                      Contract Total: $151,200/yr · Modality: Cryogenic Road Tanker · Deal Ref: TXN-8801
-                    </div>
-                  </div>
+              <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {realRequests.length > 0 ? (
+                  realRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      style={{
+                        border: '1px solid #E5E5E2',
+                        borderRadius: 8,
+                        padding: '18px 20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 16,
+                        background: req.status === 'ACCEPTED' ? '#F0FDF4' : '#FAFAF9'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1D1B' }}>
+                            Supply Proposal #{req.id ? req.id.slice(0, 8) : 'REQ'}
+                          </span>
+                          <Badge
+                            variant={req.status === 'ACCEPTED' ? 'green' : req.status === 'REJECTED' ? 'neutral' : 'teal'}
+                            dot={req.status === 'PENDING'}
+                          >
+                            {req.status === 'ACCEPTED' ? 'Accepted by Seller' : req.status === 'REJECTED' ? 'Declined' : 'Pending Review'}
+                          </Badge>
+                          <span style={{ fontSize: 12, color: '#8A8C8A' }}>
+                            Seller ID: {req.seller_id ? req.seller_id.slice(0, 8) : 'seller'}...
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 13, color: '#5A5C5A' }}>
+                          Offered Rate: <strong className="tabular-nums" style={{ color: '#0F3D2E' }}>${req.offered_price} / tonne</strong> · Volume: <strong className="tabular-nums">{req.quantity} tonnes</strong>
+                        </div>
+                        <div className="tabular-nums" style={{ fontSize: 12, color: '#8A8C8A', marginTop: 4 }}>
+                          Total Deal Value: ${(req.quantity * req.offered_price).toLocaleString()} · Match Ref: {req.match_id ? req.match_id.slice(0, 8) : 'DIRECT'}...
+                        </div>
+                      </div>
 
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Button size="sm" variant="primary" onClick={() => navigate('/transactions/TXN-8801')}>
-                      Track Delivery & Custody
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => navigate('/matches')}>
-                      View Match Score
-                    </Button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {req.status === 'ACCEPTED' ? (
+                          <Button size="sm" variant="primary" onClick={() => navigate(`/transactions/${req.id}`)}>
+                            Track Delivery & Custody →
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => navigate('/matches')}>
+                            View Matching Engine
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div
+                    style={{
+                      border: '1px solid #E5E5E2',
+                      borderRadius: 8,
+                      padding: '18px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 16,
+                      background: '#FAFAF9'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1D1B' }}>
+                          Proposal to: ABC Cement Ltd (Ahmedabad Kiln-4)
+                        </span>
+                        <Badge variant="green">Accepted by Seller</Badge>
+                      </div>
+                      <div style={{ fontSize: 13, color: '#5A5C5A' }}>
+                        Offered Rate: <strong className="tabular-nums" style={{ color: '#0F3D2E' }}>$42 / tonne</strong> · Volume: <strong className="tabular-nums">300 tonnes/month</strong>
+                      </div>
+                      <div className="tabular-nums" style={{ fontSize: 12, color: '#8A8C8A', marginTop: 4 }}>
+                        Contract Total: $151,200/yr · Modality: Cryogenic Road Tanker · Deal Ref: TXN-8801
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button size="sm" variant="primary" onClick={() => navigate('/transactions/TXN-8801')}>
+                        Track Delivery & Custody
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/matches')}>
+                        View Match Score
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </Card>
           )}

@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import List, Union
-from pydantic import field_validator
+from typing import List, Optional, Union
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Base directory for backend project
@@ -21,6 +21,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174",
     ]
 
+    # Supabase Configuration
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+    SUPABASE_PUBLISHABLE_KEY: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
@@ -28,6 +34,16 @@ class Settings(BaseSettings):
             # Split comma-separated string if provided as env var
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
+
+    @model_validator(mode="after")
+    def validate_supabase_keys(self) -> "Settings":
+        # Fallback to publishable or service-role key if SUPABASE_KEY is not directly set
+        if not self.SUPABASE_KEY:
+            if self.SUPABASE_PUBLISHABLE_KEY:
+                self.SUPABASE_KEY = self.SUPABASE_PUBLISHABLE_KEY
+            elif self.SUPABASE_SERVICE_ROLE_KEY:
+                self.SUPABASE_KEY = self.SUPABASE_SERVICE_ROLE_KEY
+        return self
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),

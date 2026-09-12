@@ -24,6 +24,16 @@ from app.schemas.match import (
     MatchItemResponse,
     MatchListResponse,
 )
+from app.schemas.logistics import (
+    LogisticsEstimateRequest,
+    LogisticsEstimateResponse,
+)
+from app.schemas.request import (
+    RequestStatus,
+    RequestCreate,
+    RequestStatusUpdate,
+    RequestResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -44,4 +54,10 @@ __all__ = [
     "MatchBreakdown",
     "MatchItemResponse",
     "MatchListResponse",
+    "LogisticsEstimateRequest",
+    "LogisticsEstimateResponse",
+    "RequestStatus",
+    "RequestCreate",
+    "RequestStatusUpdate",
+    "RequestResponse",
 ]

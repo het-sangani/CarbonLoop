@@ -78,6 +78,7 @@ def get_matches_for_requirement(
                     price_score=m["price_score"],
                     distance_km=m.get("distance_km"),
                     explanation=m["explanation"],
+                    logistics=m.get("logistics"),
                     created_at=m.get("created_at"),
                 )
             )

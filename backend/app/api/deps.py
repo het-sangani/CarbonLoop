@@ -47,6 +47,28 @@ def get_matching_service(
     return MatchingService(client=client)
 
 
+def get_distance_estimator() -> "DistanceEstimator":
+    """Dependency provider for DistanceEstimator instance."""
+    from app.services.logistics import DistanceEstimator
+    return DistanceEstimator()
+
+
+def get_logistics_service(
+    distance_estimator: "DistanceEstimator" = Depends(get_distance_estimator),
+) -> "LogisticsService":
+    """Dependency provider for LogisticsService instance."""
+    from app.services.logistics import LogisticsService
+    return LogisticsService(distance_estimator=distance_estimator)
+
+
+def get_request_service(
+    client: Client = Depends(get_supabase),
+) -> "RequestService":
+    """Dependency provider for RequestService instance."""
+    from app.services.request_service import RequestService
+    return RequestService(client=client)
+
+
 def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     auth_service: "AuthService" = Depends(get_auth_service),

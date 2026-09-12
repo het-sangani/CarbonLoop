@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 from app.schemas.listing import ListingResponse
+from app.schemas.logistics import LogisticsEstimateResponse
 
 
 class MatchBreakdown(BaseModel):
@@ -18,7 +19,7 @@ class MatchBreakdown(BaseModel):
 
 
 class MatchItemResponse(BaseModel):
-    """Ranked match item including listing details, scores, and human-readable explanation."""
+    """Ranked match item including listing details, scores, logistics, and human-readable explanation."""
     id: Optional[str] = None
     listing_id: str
     requirement_id: str
@@ -31,6 +32,7 @@ class MatchItemResponse(BaseModel):
     price_score: float
     distance_km: Optional[float] = None
     explanation: str
+    logistics: Optional[LogisticsEstimateResponse] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

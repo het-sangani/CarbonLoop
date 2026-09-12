@@ -335,6 +335,29 @@ class MatchingService:
             if match_score <= 0.0:
                 continue
 
+            # Calculate prototype logistics and landed cost estimate for this pairing
+            logistics_est = None
+            try:
+                from app.services.logistics import LogisticsService
+                req_qty_val = float(requirement.get("required_quantity") or 0.0)
+                list_qty_val = float(listing.get("quantity") or 0.0)
+                if req_qty_val > 0 and list_qty_val > 0:
+                    qty_for_est = min(req_qty_val, list_qty_val)
+                else:
+                    qty_for_est = req_qty_val or list_qty_val or 100.0
+
+                price_for_est = float(listing.get("asking_price") or 0.0)
+                if qty_for_est > 0 and price_for_est >= 0:
+                    logistics_service = LogisticsService()
+                    logistics_est = logistics_service.estimate_logistics(
+                        pickup_location=listing.get("location") or "",
+                        delivery_location=requirement.get("delivery_location") or "",
+                        quantity_tonnes=qty_for_est,
+                        price_per_tonne=price_for_est,
+                    )
+            except Exception as log_exc:
+                logger.debug("Could not compute logistics estimate for match: %s", log_exc)
+
             match_record = {
                 "listing_id": listing["id"],
                 "requirement_id": requirement_id,
@@ -347,6 +370,7 @@ class MatchingService:
                 "price_score": sub_scores["price_score"],
                 "distance_km": sub_scores["distance_km"],
                 "explanation": explanation,
+                "logistics": logistics_est,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
 

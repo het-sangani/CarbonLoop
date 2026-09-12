@@ -1,4 +1,4 @@
 """Schemas package."""
-from app.schemas.health import HealthResponse
+from app.schemas.health import HealthResponse, DatabaseHealthResponse
 
-__all__ = ["HealthResponse"]
+__all__ = ["HealthResponse", "DatabaseHealthResponse"]

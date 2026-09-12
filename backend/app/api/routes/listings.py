@@ -6,8 +6,9 @@ from app.schemas.listing import (
     ListingUpdate,
     ListingResponse,
 )
+from app.schemas.auth import AuthenticatedUser
 from app.services.listing_service import ListingService
-from app.api.deps import get_listing_service, get_current_seller_id
+from app.api.deps import get_listing_service, require_seller
 
 router = APIRouter()
 
@@ -20,23 +21,15 @@ router = APIRouter()
 )
 def create_listing(
     listing_in: ListingCreate,
+    current_user: AuthenticatedUser = Depends(require_seller),
     service: ListingService = Depends(get_listing_service),
-    seller_id: Optional[str] = Depends(get_current_seller_id),
 ) -> ListingResponse:
     """
     Create a new CO2 supply listing in the platform.
-    
-    Validation:
-    - quantity must be greater than 0
-    - purity must be between 0 and 100
-    - asking_price must be non-negative
-    - availability_start must not be after availability_end
-    - status must follow existing conventions ('active', 'in-negotiation', 'fulfilled', 'closed', 'pending')
-    
-    Seller identification is cleanly separated through an isolated interface.
+    Requires SELLER role. The seller_id is automatically bound to the authenticated user ID.
     """
     try:
-        created = service.create_listing(listing_in, seller_id=seller_id)
+        created = service.create_listing(listing_in, seller_id=current_user.id)
         return ListingResponse(**created)
     except Exception as exc:
         raise HTTPException(
@@ -61,6 +54,7 @@ def get_listings(
 ) -> List[ListingResponse]:
     """
     Retrieve all CO2 supply listings with optional filtering and pagination.
+    Marketplace explorer endpoint accessible to all users.
     """
     try:
         records = service.get_listings(
@@ -117,12 +111,28 @@ def get_listing_by_id(
 def update_listing(
     listing_id: str,
     listing_update: ListingUpdate,
+    current_user: AuthenticatedUser = Depends(require_seller),
     service: ListingService = Depends(get_listing_service),
 ) -> ListingResponse:
     """
     Partially update fields on an existing CO2 supply listing.
+    Requires SELLER role. Enforces that only the creator/owner seller can modify their listing.
     """
     try:
+        existing = service.get_listing_by_id(listing_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Listing with ID '{listing_id}' not found",
+            )
+
+        # Ownership check: seller cannot modify another seller's listing
+        if existing.get("seller_id") and str(existing["seller_id"]) != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to modify another seller's listing",
+            )
+
         updated = service.update_listing(listing_id, listing_update)
         if not updated:
             raise HTTPException(
@@ -146,12 +156,28 @@ def update_listing(
 )
 def delete_listing(
     listing_id: str,
+    current_user: AuthenticatedUser = Depends(require_seller),
     service: ListingService = Depends(get_listing_service),
 ):
     """
     Delete an existing CO2 supply listing by ID.
+    Requires SELLER role. Enforces that only the creator/owner seller can delete their listing.
     """
     try:
+        existing = service.get_listing_by_id(listing_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Listing with ID '{listing_id}' not found",
+            )
+
+        # Ownership check: seller cannot delete another seller's listing
+        if existing.get("seller_id") and str(existing["seller_id"]) != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to delete another seller's listing",
+            )
+
         deleted = service.delete_listing(listing_id)
         if not deleted:
             raise HTTPException(

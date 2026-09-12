@@ -7,6 +7,23 @@ from app.schemas.listing import (
     ListingResponse,
     ALLOWED_STATUSES,
 )
+from app.schemas.requirement import (
+    RequirementCreate,
+    RequirementUpdate,
+    RequirementResponse,
+    REQUIREMENT_STATUSES,
+)
+from app.schemas.auth import (
+    UserRole,
+    ProfileBase,
+    ProfileResponse,
+    AuthenticatedUser,
+)
+from app.schemas.match import (
+    MatchBreakdown,
+    MatchItemResponse,
+    MatchListResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -16,4 +33,15 @@ __all__ = [
     "ListingUpdate",
     "ListingResponse",
     "ALLOWED_STATUSES",
+    "RequirementCreate",
+    "RequirementUpdate",
+    "RequirementResponse",
+    "REQUIREMENT_STATUSES",
+    "UserRole",
+    "ProfileBase",
+    "ProfileResponse",
+    "AuthenticatedUser",
+    "MatchBreakdown",
+    "MatchItemResponse",
+    "MatchListResponse",
 ]

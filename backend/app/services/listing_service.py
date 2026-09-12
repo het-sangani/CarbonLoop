@@ -101,6 +101,10 @@ class ListingService:
                 return response.data[0]
             return None
         except Exception as exc:
+            # Postgres raises 22P02 for invalid UUID syntax — treat as not found
+            exc_str = str(exc)
+            if "22P02" in exc_str or "invalid input syntax" in exc_str:
+                return None
             logger.error("Error fetching listing %s from %s: %s", listing_id, TABLE_NAME, exc)
             raise
 

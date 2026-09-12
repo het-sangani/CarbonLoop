@@ -5,9 +5,18 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.api.deps import get_listing_service
+from app.api.deps import get_listing_service, require_seller
 from app.schemas.listing import ListingCreate, ListingUpdate
+from app.schemas.auth import AuthenticatedUser, ProfileResponse, UserRole
 from app.services.listing_service import ListingService
+
+DEFAULT_SELLER_ID = "seller-uuid-1234"
+mock_seller_user = AuthenticatedUser(
+    id=DEFAULT_SELLER_ID,
+    email="seller@example.com",
+    profile=ProfileResponse(id=DEFAULT_SELLER_ID, role=UserRole.SELLER),
+    role=UserRole.SELLER,
+)
 
 
 class MockListingService:
@@ -93,6 +102,7 @@ class MockListingService:
 def mock_service():
     service = MockListingService()
     app.dependency_overrides[get_listing_service] = lambda: service
+    app.dependency_overrides[require_seller] = lambda: mock_seller_user
     yield service
     app.dependency_overrides.clear()
 
@@ -128,7 +138,7 @@ def test_valid_listing_creation(client):
     assert data["location"] == "Ahmedabad, Gujarat"
     assert data["asking_price"] == 42.0
     assert data["status"] == "active"
-    assert data["seller_id"] is None
+    assert data["seller_id"] == DEFAULT_SELLER_ID
 
 
 def test_valid_listing_creation_with_isolated_seller_header(client):
@@ -487,3 +497,44 @@ def test_listing_service_direct_unit_tests():
     mock_sb.table.return_value.delete.return_value.eq.return_value.execute.return_value.data = []
     deleted = service.delete_listing("abc-123")
     assert deleted is True
+
+
+# ---------------------------------------------------------------------------
+# 11. Malformed Body & Missing Resource Tests
+# ---------------------------------------------------------------------------
+
+def test_create_listing_malformed_body(client):
+    """
+    Test sending malformed types (e.g. string for quantity) returns 422 Unprocessable Entity.
+    """
+    response = client.post(
+        "/api/listings",
+        json={
+            "quantity": "not_a_valid_float",
+            "purity": 99.0,
+            "location": "Ahmedabad",
+            "asking_price": 50.0,
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_update_nonexistent_listing_returns_404(client):
+    """
+    Test updating a nonexistent listing returns 404 Not Found.
+    """
+    response = client.patch(
+        "/api/listings/nonexistent-uuid-12345",
+        json={"asking_price": 50.0},
+    )
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+def test_delete_nonexistent_listing_returns_404(client):
+    """
+    Test deleting a nonexistent listing returns 404 Not Found.
+    """
+    response = client.delete("/api/listings/nonexistent-uuid-12345")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()

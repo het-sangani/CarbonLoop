@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 MATCHES_TABLE = "matches"
 LISTINGS_TABLE = "co2_listings"
 REQUIREMENTS_TABLE = "requirements"
+_LOCAL_MATCHES: Dict[str, Dict[str, Any]] = {}
 
 # Coordinate directory for Gujarat and prominent Indian industrial zones
 KNOWN_LOCATIONS: Dict[str, Tuple[float, float]] = {
@@ -252,25 +253,51 @@ class MatchingService:
             "distance_km": distance_km,
         }
 
-        # 7. Human-readable explanation
-        purity_status = (
-            f"{purity}% purity satisfies the buyer's {min_purity}% minimum requirement."
-            if purity >= min_purity
-            else f"{purity}% purity fails the buyer's {min_purity}% minimum requirement."
-        )
-        volume_status = (
-            f"The supplier can provide {supply_qty} tonnes against the required {req_qty} tonnes."
-            if supply_qty >= req_qty
-            else f"The supplier offers {supply_qty} tonnes (partial capacity against {req_qty} tonnes required)."
-        )
-        dist_status = f"The estimated transit distance is {distance_km} km."
+        # 7. Human-readable explanation points & composite summary
+        points = []
+        if purity >= min_purity:
+            points.append(f"{purity:.1f}% CO₂ purity satisfies the buyer's {min_purity:.1f}% minimum requirement.")
+        else:
+            points.append(f"{purity:.1f}% CO₂ purity fails the buyer's {min_purity:.1f}% minimum requirement.")
 
-        explanation = f"{purity_status} {volume_status} {dist_status}"
+        if supply_qty >= req_qty:
+            points.append(f"The supplier can provide {supply_qty:.1f} tonnes against {req_qty:.1f} tonnes required.")
+        else:
+            points.append(f"{supply_qty:.1f} tonnes available provides partial capacity against {req_qty:.1f} tonnes required.")
+
+        if distance_km > 0:
+            points.append(f"Supplier is approximately {distance_km:g} km away via regional freight corridor.")
+        else:
+            points.append("Supplier facility located in the immediate industrial cluster.")
+
+        if max_budget is not None and float(max_budget) > 0:
+            max_b = float(max_budget)
+            if asking_price <= max_b:
+                points.append(f"Asking price of ${asking_price:g}/t is within the buyer's budget (${max_b:g}/t).")
+            else:
+                points.append(f"Asking price of ${asking_price:g}/t exceeds the buyer's target budget of ${max_b:g}/t.")
+        else:
+            points.append(f"Asking price is competitive at ${asking_price:g} / tonne.")
+
+        if req_date and (avail_start or avail_end):
+            if availability_score >= 70:
+                points.append("Availability schedule overlaps the requested off-take timeline.")
+            else:
+                points.append("Availability schedule requires off-take alignment.")
+        else:
+            points.append("Continuous capture stream ready for immediate off-take.")
+
+        explanation = " ".join(points)
+        sub_scores["explanation_points"] = points
 
         return sub_scores, match_score, explanation
 
+
     def get_requirement_by_id(self, requirement_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch requirement from database."""
+        """Fetch requirement from database or local store."""
+        from app.services.requirement_service import _LOCAL_REQUIREMENTS
+        if requirement_id in _LOCAL_REQUIREMENTS:
+            return _LOCAL_REQUIREMENTS[requirement_id]
         try:
             res = (
                 self.client.table(REQUIREMENTS_TABLE)
@@ -280,13 +307,14 @@ class MatchingService:
             )
             if res.data and len(res.data) > 0:
                 return res.data[0]
-            return None
+            return _LOCAL_REQUIREMENTS.get(requirement_id)
         except Exception as exc:
             logger.error("Error fetching requirement %s: %s", requirement_id, exc)
-            return None
+            return _LOCAL_REQUIREMENTS.get(requirement_id)
 
     def get_active_listings(self) -> List[Dict[str, Any]]:
         """Fetch available active listings for matching."""
+        from app.services.listing_service import _LOCAL_LISTINGS
         try:
             res = (
                 self.client.table(LISTINGS_TABLE)
@@ -294,10 +322,16 @@ class MatchingService:
                 .eq("status", "active")
                 .execute()
             )
-            return res.data or []
+            db_records = res.data or []
+            db_ids = {r["id"] for r in db_records}
+            local_records = [
+                r for r in _LOCAL_LISTINGS.values()
+                if r["id"] not in db_ids and r.get("status", "active") == "active"
+            ]
+            return db_records + local_records
         except Exception as exc:
             logger.error("Error fetching active listings: %s", exc)
-            return []
+            return list(_LOCAL_LISTINGS.values())
 
     def find_matches(
         self,
@@ -358,7 +392,9 @@ class MatchingService:
             except Exception as log_exc:
                 logger.debug("Could not compute logistics estimate for match: %s", log_exc)
 
+            match_id = str(uuid.uuid4())
             match_record = {
+                "id": match_id,
                 "listing_id": listing["id"],
                 "requirement_id": requirement_id,
                 "listing": listing,
@@ -370,6 +406,7 @@ class MatchingService:
                 "price_score": sub_scores["price_score"],
                 "distance_km": sub_scores["distance_km"],
                 "explanation": explanation,
+                "explanation_points": sub_scores.get("explanation_points", []),
                 "logistics": logistics_est,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
@@ -377,6 +414,7 @@ class MatchingService:
             matches.append(match_record)
 
             to_persist.append({
+                "id": match_id,
                 "listing_id": listing["id"],
                 "requirement_id": requirement_id,
                 "match_score": match_score,
@@ -391,6 +429,11 @@ class MatchingService:
         # Sort matches by match_score descending
         matches.sort(key=lambda m: m["match_score"], reverse=True)
 
+        # Cache matches locally
+        for m in matches:
+            if m.get("id"):
+                _LOCAL_MATCHES[m["id"]] = m
+
         # Persist to database where appropriate
         if persist and to_persist:
             try:
@@ -398,10 +441,10 @@ class MatchingService:
                 self.client.table(MATCHES_TABLE).delete().eq("requirement_id", requirement_id).execute()
                 insert_res = self.client.table(MATCHES_TABLE).insert(to_persist).execute()
                 if insert_res.data:
-                    # Update local match records with generated database IDs
                     for i, db_rec in enumerate(insert_res.data):
-                        if i < len(matches):
+                        if i < len(matches) and db_rec.get("id"):
                             matches[i]["id"] = db_rec.get("id")
+                            _LOCAL_MATCHES[db_rec["id"]] = matches[i]
             except Exception as exc:
                 logger.warning("Could not persist matches to database: %s", exc)
 

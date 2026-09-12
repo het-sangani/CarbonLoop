@@ -1,0 +1,389 @@
+{
+  "info": {
+    "_postman_id": "e8a9b123-1f8e-4d5a-9a0b-112233445566",
+    "name": "CarbonLoop API - Checkpoints 7 to 9",
+    "description": "Comprehensive Postman collection for CarbonLoop Backend Checkpoint 7 (Logistics & Cost Estimation), Checkpoint 8 (Supply Requests & Bidding), and Checkpoint 9 (Transport Jobs & Delivery Lifecycle).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8008",
+      "type": "string"
+    },
+    {
+      "key": "buyerToken",
+      "value": "YOUR_BUYER_SUPABASE_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "sellerToken",
+      "value": "YOUR_SELLER_SUPABASE_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "transporterToken",
+      "value": "YOUR_TRANSPORTER_SUPABASE_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "matchId",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "requestId",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Checkpoint 7 - Logistics & Cost",
+      "item": [
+        {
+          "name": "Estimate Logistics - Valid Corridor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickup_location\": \"Dahej, Gujarat\",\n  \"delivery_location\": \"Hazira, Gujarat\",\n  \"quantity_tonnes\": 300.0,\n  \"price_per_tonne\": 42.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/logistics/estimate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logistics", "estimate"]
+            }
+          }
+        },
+        {
+          "name": "Estimate Logistics - Regional Fallback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickup_location\": \"Remote Facility Alpha\",\n  \"delivery_location\": \"Remote Facility Beta\",\n  \"quantity_tonnes\": 100.0,\n  \"price_per_tonne\": 50.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/logistics/estimate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logistics", "estimate"]
+            }
+          }
+        },
+        {
+          "name": "Estimate Logistics - Invalid Quantity (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pickup_location\": \"Dahej\",\n  \"delivery_location\": \"Hazira\",\n  \"quantity_tonnes\": -100.0,\n  \"price_per_tonne\": 42.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/logistics/estimate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logistics", "estimate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Checkpoint 8 - Requests & Bidding",
+      "item": [
+        {
+          "name": "Create Supply Request (Buyer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"match_id\": \"{{matchId}}\",\n  \"quantity\": 250.0,\n  \"offered_price\": 42.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests"]
+            }
+          }
+        },
+        {
+          "name": "List Requests (Scoped by Role)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests"]
+            }
+          }
+        },
+        {
+          "name": "Get Request by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}"]
+            }
+          }
+        },
+        {
+          "name": "Seller Accepts Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sellerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Seller Rejects Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sellerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Checkpoint 9 - Transport Jobs",
+      "item": [
+        {
+          "name": "Create Transport Job from Accepted Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_id\": \"{{requestId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/transport/jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transport", "jobs"]
+            }
+          }
+        },
+        {
+          "name": "List Transport Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{transporterToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transport/jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transport", "jobs"]
+            }
+          }
+        },
+        {
+          "name": "Get Transport Job by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{transporterToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transport/jobs/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transport", "jobs", "{{jobId}}"]
+            }
+          }
+        },
+        {
+          "name": "Assign Transporter",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{transporterToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/transport/jobs/{{jobId}}/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transport", "jobs", "{{jobId}}", "assign"]
+            }
+          }
+        },
+        {
+          "name": "Update Status to IN_TRANSIT",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{transporterToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/transport/jobs/{{jobId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transport", "jobs", "{{jobId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Status to DELIVERED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{transporterToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DELIVERED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/transport/jobs/{{jobId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transport", "jobs", "{{jobId}}", "status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

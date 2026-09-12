@@ -11,6 +11,13 @@ from app.services.request_service import (
     UnauthorizedRequestActionError,
     InvalidRequestDataError,
 )
+from app.services.transport_service import (
+    TransportService,
+    TransportJobNotFoundError,
+    InvalidTransportJobStateError,
+    UnauthorizedTransportActionError,
+    InvalidTransportTransitionError,
+)
 
 __all__ = [
     "ListingService",
@@ -24,4 +31,9 @@ __all__ = [
     "MatchNotFoundError",
     "UnauthorizedRequestActionError",
     "InvalidRequestDataError",
+    "TransportService",
+    "TransportJobNotFoundError",
+    "InvalidTransportJobStateError",
+    "UnauthorizedTransportActionError",
+    "InvalidTransportTransitionError",
 ]

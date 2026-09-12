@@ -69,6 +69,19 @@ def get_request_service(
     return RequestService(client=client)
 
 
+def get_transport_service(
+    client: Client = Depends(get_supabase),
+    logistics_service: "LogisticsService" = Depends(get_logistics_service),
+) -> "TransportService":
+    """Dependency provider for TransportService instance."""
+    from app.services.transport_service import TransportService
+    return TransportService(
+        client=client,
+        distance_estimator=logistics_service.distance_estimator,
+        logistics_service=logistics_service,
+    )
+
+
 def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     auth_service: "AuthService" = Depends(get_auth_service),

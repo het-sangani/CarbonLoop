@@ -32,6 +32,7 @@ class MatchItemResponse(BaseModel):
     price_score: float
     distance_km: Optional[float] = None
     explanation: str
+    explanation_points: Optional[List[str]] = None
     logistics: Optional[LogisticsEstimateResponse] = None
     created_at: Optional[datetime] = None
 

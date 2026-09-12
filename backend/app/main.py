@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api.routes import health, listings, requirements, auth, matches, logistics, requests
+from app.api.routes import health, listings, requirements, auth, matches, logistics, requests, transport
 
 
 def create_application() -> FastAPI:
@@ -33,6 +33,7 @@ def create_application() -> FastAPI:
     application.include_router(matches.router, prefix="/api/matches", tags=["Matches"])
     application.include_router(logistics.router, prefix="/api/logistics", tags=["Logistics"])
     application.include_router(requests.router, prefix="/api/requests", tags=["Requests"])
+    application.include_router(transport.router, prefix="/api/transport", tags=["Transport"])
 
     @application.get("/", tags=["Root"])
     def root():

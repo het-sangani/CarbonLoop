@@ -34,6 +34,13 @@ from app.schemas.request import (
     RequestStatusUpdate,
     RequestResponse,
 )
+from app.schemas.transport import (
+    TransportJobStatus,
+    TransportJobCreate,
+    TransportJobAssign,
+    TransportJobStatusUpdate,
+    TransportJobResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -60,4 +67,9 @@ __all__ = [
     "RequestCreate",
     "RequestStatusUpdate",
     "RequestResponse",
+    "TransportJobStatus",
+    "TransportJobCreate",
+    "TransportJobAssign",
+    "TransportJobStatusUpdate",
+    "TransportJobResponse",
 ]

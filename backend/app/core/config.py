@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "CarbonLoop API"
     ENVIRONMENT: str = "development"
     HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    PORT: int = 8008
 
     # Allowed CORS origins for frontend communication
     CORS_ORIGINS: Union[str, List[str]] = [
@@ -19,6 +19,8 @@ class Settings(BaseSettings):
         "http://localhost:5174",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+        "http://localhost:8443",
+        "http://127.0.0.1:8443",
     ]
 
     # Supabase Configuration

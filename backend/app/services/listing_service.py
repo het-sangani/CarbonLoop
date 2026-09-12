@@ -37,10 +37,14 @@ class ListingService:
             "status": listing_in.status,
         }
 
-        # Associate seller_id if available
+        # Associate seller_id if available and is a valid UUID
         effective_seller = seller_id or listing_in.seller_id
         if effective_seller:
-            payload["seller_id"] = effective_seller
+            try:
+                uuid.UUID(str(effective_seller))
+                payload["seller_id"] = str(effective_seller)
+            except ValueError:
+                pass
 
         # Date serialization
         if listing_in.availability_start:

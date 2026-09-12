@@ -1,0 +1,10 @@
+{
+  "description": "Connects CO₂ suppliers with industrial buyers to facilitate sustainable reuse of captured carbon, enhancing eco-friendly material and fuel sourcing.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

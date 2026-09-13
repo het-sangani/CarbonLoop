@@ -587,7 +587,7 @@ export default function MatchResultsPage() {
                       Why this supplier?
                     </span>
                   </div>
-                  <Badge variant="success" size="sm">
+                  <Badge variant="green" size="sm">
                     {currentMatch.breakdown.overallScore}% MATCH
                   </Badge>
                 </div>

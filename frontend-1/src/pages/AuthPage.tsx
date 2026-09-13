@@ -17,10 +17,10 @@ export const AuthPage: React.FC = () => {
   const { user, isAuthenticated, login, logout } = useAuth();
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [role, setRole] = useState<'supplier' | 'buyer' | 'transporter' | 'government'>('supplier');
-  const [email, setEmail] = useState('rajesh.varma@abccement.com');
-  const [password, setPassword] = useState('Password123!');
-  const [orgName, setOrgName] = useState('ABC Cement Ltd');
-  const [selectedPersona, setSelectedPersona] = useState<string | null>('abc-cement');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [orgName, setOrgName] = useState('');
+  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -152,7 +152,7 @@ export const AuthPage: React.FC = () => {
       const defaultToken = mappedRole === 'SELLER' ? 'jwt-seller-token' : 'jwt-buyer-token';
 
       // 1. Check if demo persona is used
-      if (email === 'rajesh.varma@abccement.com' || (role === 'supplier' && !email.includes('.'))) {
+      if (email === 'rajesh.varma@abccement.com') {
         setStoredAuth('jwt-seller-token', {
           id: '11111111-1111-4111-8111-111111111111',
           email: 'rajesh.varma@abccement.com',
@@ -160,7 +160,7 @@ export const AuthPage: React.FC = () => {
           organization: orgName || 'ABC Cement Ltd',
           full_name: 'Rajesh Varma',
         });
-      } else if (email === 'procurement@greenfuel.in' || (role === 'buyer' && !email.includes('.'))) {
+      } else if (email === 'procurement@greenfuel.in') {
         setStoredAuth('jwt-buyer-token', {
           id: '22222222-2222-4222-8222-222222222222',
           email: 'procurement@greenfuel.in',
@@ -311,7 +311,7 @@ export const AuthPage: React.FC = () => {
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#14532D' }}>
                   Signed in as {user.organization || user.name}
                 </span>
-                <Badge variant="supplier" size="sm">{user.role.toUpperCase()}</Badge>
+                <Badge variant="teal" size="sm">{user.role.toUpperCase()}</Badge>
               </div>
             </div>
             <p style={{ fontSize: 12, color: '#166534', margin: 0, lineHeight: 1.4 }}>

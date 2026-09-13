@@ -32,15 +32,15 @@ export default function RequestBidPage() {
     mockSupplyListings.find((s) => s.id === id) || mockSupplyListings[0];
 
   const [bidData, setBidData] = useState({
-    bidderName: 'GreenFuel SynTech Ltd',
-    destinationHub: 'Vadodara Power-to-X Synthesis Hub',
-    contactPerson: 'Meera Krishnan, VP Carbon Sourcing',
+    bidderName: '',
+    destinationHub: '',
+    contactPerson: '',
     requestedVolumeTonnes: queryQty ? Number(queryQty) : 300,
     offeredPricePerTonneUSD: queryPrice ? Number(queryPrice) : 42,
     contractDurationMonths: 12,
     deliveryStartDate: '2026-10-15',
     transportModality: 'Cryogenic Tanker Truck (Road)',
-    specialClauses: 'Requires continuous CEMS data feed and ISO 14064-2 verified digital chain-of-custody transfer.'
+    specialClauses: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -158,7 +158,7 @@ export default function RequestBidPage() {
       {errorMessage && (
         <div style={{ marginBottom: 24 }}>
           <AlertBanner
-            variant="danger"
+            variant="error"
             title="Proposal Dispatch Error"
             message={errorMessage}
             actionLabel="Dismiss"
@@ -194,6 +194,7 @@ export default function RequestBidPage() {
                   <input
                     type="text"
                     required
+                    placeholder="e.g. GreenFuel SynTech Ltd"
                     value={bidData.bidderName}
                     onChange={(e) => setBidData({ ...bidData, bidderName: e.target.value })}
                     className="form-input"
@@ -207,6 +208,7 @@ export default function RequestBidPage() {
                   <input
                     type="text"
                     required
+                    placeholder="e.g. Vadodara Power-to-X Synthesis Hub"
                     value={bidData.destinationHub}
                     onChange={(e) => setBidData({ ...bidData, destinationHub: e.target.value })}
                     className="form-input"
@@ -220,6 +222,7 @@ export default function RequestBidPage() {
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. Meera Krishnan, VP Carbon Sourcing"
                   value={bidData.contactPerson}
                   onChange={(e) => setBidData({ ...bidData, contactPerson: e.target.value })}
                   className="form-input"
@@ -309,6 +312,7 @@ export default function RequestBidPage() {
               <LabelCaps style={{ marginBottom: 12 }}>3. Quality Protocols & Custody Conditions</LabelCaps>
               <textarea
                 rows={3}
+                placeholder="e.g. Requires continuous CEMS data feed and ISO 14064-2 verified digital chain-of-custody transfer."
                 value={bidData.specialClauses}
                 onChange={(e) => setBidData({ ...bidData, specialClauses: e.target.value })}
                 className="form-input"

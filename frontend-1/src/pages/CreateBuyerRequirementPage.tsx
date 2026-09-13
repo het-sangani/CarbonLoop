@@ -147,7 +147,7 @@ export default function CreateBuyerRequirementPage() {
       {errorMessage && (
         <div style={{ marginBottom: 24 }}>
           <AlertBanner
-            variant="danger"
+            variant="error"
             title="Registration Error"
             message={errorMessage}
             actionLabel="Dismiss"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { CarbonLoopOrb, Badge, Button } from './components/common/UIComponents';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
@@ -21,7 +21,7 @@ function NavigationBar() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const isAuthPage = location.pathname === '/auth';
+  const isAuthPage = location.pathname === '/auth' || location.pathname === '/';
 
   const navLinks = [
     { label: 'Marketplace', path: '/marketplace' },
@@ -418,15 +418,6 @@ function NotFound() {
   );
 }
 
-function RootRedirect() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? (
-    <Navigate to="/marketplace" replace />
-  ) : (
-    <Navigate to="/auth" replace />
-  );
-}
-
 export default function App() {
   return (
     <BrowserRouter>
@@ -435,8 +426,8 @@ export default function App() {
           <NavigationBar />
           <main style={{ flex: 1 }}>
             <Routes>
-              {/* Page 1: Root entry directs to Sign In first */}
-              <Route path="/" element={<RootRedirect />} />
+              {/* Page 1: Root entry opens Sign In directly */}
+              <Route path="/" element={<AuthPage />} />
 
               {/* Page 2: Public Login / Register page */}
               <Route path="/auth" element={<AuthPage />} />

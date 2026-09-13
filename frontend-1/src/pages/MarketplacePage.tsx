@@ -37,7 +37,8 @@ function mapApiListingToSupply(api: ApiListing): SupplyListing {
     facilityType: 'Point-Source Capture Facility',
     city: city,
     state: state,
-    location: api.location,
+    location: api.location || `${city}, ${state}`,
+    coordinates: { lat: 21.7645, lng: 72.1519 },
     volumeTonnes: api.quantity,
     volumeFrequency: 'Monthly Continuous',
     composition: {
@@ -54,6 +55,8 @@ function mapApiListingToSupply(api: ApiListing): SupplyListing {
     pricePerTonneUSD: api.asking_price,
     availableFrom: api.availability_start ? api.availability_start.split('T')[0] : '2026-10-01',
     deliveryTerms: 'Ex-Works / Cryo-Tanker Dispatch',
+    status: 'active',
+    verificationLevel: 'ISO 14064-2 Verified',
     description: `Active verified capture stream #${api.id.slice(0, 8)} supplying ${api.quantity} tonnes/month of ${api.purity}% purity CO2 at $${api.asking_price}/t.`,
     contactPerson: 'Rajesh Varma, VP Industrial Decarbonization'
   };
@@ -70,7 +73,8 @@ function mapApiRequirementToBuyer(api: ApiRequirement): BuyerRequirement {
     facilityName: `${city} Power-to-X Synthesis Hub`,
     city: city,
     state: state,
-    location: api.delivery_location,
+    location: api.delivery_location || `${city}, ${state}`,
+    coordinates: { lat: 22.3072, lng: 73.1812 },
     volumeNeededTonnes: api.required_quantity,
     volumeFrequency: 'Monthly Continuous',
     minPurityPercentage: api.min_purity,
@@ -80,6 +84,7 @@ function mapApiRequirementToBuyer(api: ApiRequirement): BuyerRequirement {
     maxDistanceKm: 180,
     targetPricePerTonneUSD: api.max_budget || 45,
     requiredBy: api.required_date ? api.required_date.split('T')[0] : '2026-10-15',
+    status: 'open',
     description: `Off-take demand tender #${api.id.slice(0, 8)} for ${api.required_quantity} tonnes/month at minimum ${api.min_purity}% chemical purity.`,
     contactPerson: 'Meera Krishnan, VP Carbon Sourcing'
   };
@@ -92,26 +97,7 @@ export default function MarketplacePage() {
   const [selectedPurity, setSelectedPurity] = useState<number>(0);
   const [selectedState, setSelectedState] = useState<string>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<string>('all');
-  const [supplyListings, setSupplyListings] = useState<SupplyListing[]>(mockSupplyListings);
-  const [isLoadingSupplies, setIsLoadingSupplies] = useState<boolean>(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoadingSupplies(true);
-    getSupplyListings()
-      .then((listings) => {
-        if (isMounted) {
-          setSupplyListings(listings);
-          setIsLoadingSupplies(false);
-        }
-      })
-      .catch(() => {
-        if (isMounted) setIsLoadingSupplies(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const [apiSupplies, setApiSupplies] = useState<SupplyListing[]>([]);
   const [apiBuyers, setApiBuyers] = useState<BuyerRequirement[]>([]);

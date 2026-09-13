@@ -7,10 +7,12 @@ import {
   LabelCaps,
   PageHeader,
   StatTile,
-  EmptyState
+  EmptyState,
+  AlertBanner,
+  SkeletonCard
 } from '../components/common/UIComponents';
 import { mockSupplyListings, mockBuyerRequirements, SupplyListing, BuyerRequirement } from '../mockData';
-import { getSupplyListings } from '../services/api';
+import { carbonLoopApi, ApiListing, ApiRequirement } from '../services/api';
 import {
   Search,
   Droplets,
@@ -23,6 +25,65 @@ import {
   Plus,
   RotateCcw
 } from 'lucide-react';
+
+function mapApiListingToSupply(api: ApiListing): SupplyListing {
+  const parts = (api.location || 'Gujarat').split(',');
+  const city = parts[0]?.trim() || 'Gujarat';
+  const state = parts[1]?.trim() || 'Gujarat';
+  return {
+    id: api.id,
+    companyName: api.seller_id ? 'ABC Cement Ltd' : 'Industrial Capture Stream',
+    facilityName: `${city} Continuous Capture Terminal`,
+    facilityType: 'Point-Source Capture Facility',
+    city: city,
+    state: state,
+    location: api.location,
+    volumeTonnes: api.quantity,
+    volumeFrequency: 'Monthly Continuous',
+    composition: {
+      co2Purity: api.purity,
+      nitrogenPpm: 25000,
+      moisturePpm: 120,
+      soxPpm: 15,
+      noxPpm: 30,
+      particulatesMgM3: 2.0
+    },
+    physicalState: 'Liquefied',
+    pressureBar: 18.5,
+    temperatureC: -22.0,
+    pricePerTonneUSD: api.asking_price,
+    availableFrom: api.availability_start ? api.availability_start.split('T')[0] : '2026-10-01',
+    deliveryTerms: 'Ex-Works / Cryo-Tanker Dispatch',
+    description: `Active verified capture stream #${api.id.slice(0, 8)} supplying ${api.quantity} tonnes/month of ${api.purity}% purity CO2 at $${api.asking_price}/t.`,
+    contactPerson: 'Rajesh Varma, VP Industrial Decarbonization'
+  };
+}
+
+function mapApiRequirementToBuyer(api: ApiRequirement): BuyerRequirement {
+  const parts = (api.delivery_location || 'Vadodara, Gujarat').split(',');
+  const city = parts[0]?.trim() || 'Vadodara';
+  const state = parts[1]?.trim() || 'Gujarat';
+  return {
+    id: api.id,
+    buyerName: 'GreenFuel SynTech Ltd',
+    industry: 'Synthetic Fuels (e-SAF)',
+    facilityName: `${city} Power-to-X Synthesis Hub`,
+    city: city,
+    state: state,
+    location: api.delivery_location,
+    volumeNeededTonnes: api.required_quantity,
+    volumeFrequency: 'Monthly Continuous',
+    minPurityPercentage: api.min_purity,
+    maxMoisturePpm: 200,
+    maxSoxNoxPpm: 80,
+    acceptableStates: ['Liquefied', 'Gas'],
+    maxDistanceKm: 180,
+    targetPricePerTonneUSD: api.max_budget || 45,
+    requiredBy: api.required_date ? api.required_date.split('T')[0] : '2026-10-15',
+    description: `Off-take demand tender #${api.id.slice(0, 8)} for ${api.required_quantity} tonnes/month at minimum ${api.min_purity}% chemical purity.`,
+    contactPerson: 'Meera Krishnan, VP Carbon Sourcing'
+  };
+}
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
@@ -52,9 +113,58 @@ export default function MarketplacePage() {
     };
   }, []);
 
+  const [apiSupplies, setApiSupplies] = useState<SupplyListing[]>([]);
+  const [apiBuyers, setApiBuyers] = useState<BuyerRequirement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const fetchMarketplaceData = async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const [listings, requirements] = await Promise.all([
+        carbonLoopApi.getListings().catch(() => []),
+        carbonLoopApi.getRequirements().catch(() => []),
+      ]);
+
+      const mappedListings = listings.map(mapApiListingToSupply);
+      const mappedRequirements = requirements.map(mapApiRequirementToBuyer);
+
+      // Merge backend data with benchmark listings so user can always explore rich listings
+      const existingListingIds = new Set(mappedListings.map((l) => l.id));
+      const mergedSupplies = [
+        ...mappedListings,
+        ...mockSupplyListings.filter((m) => !existingListingIds.has(m.id)),
+      ];
+
+      const existingReqIds = new Set(mappedRequirements.map((r) => r.id));
+      const mergedBuyers = [
+        ...mappedRequirements,
+        ...mockBuyerRequirements.filter((m) => !existingReqIds.has(m.id)),
+      ];
+
+      setApiSupplies(mergedSupplies);
+      setApiBuyers(mergedBuyers);
+    } catch (err: any) {
+      console.error('Failed to load marketplace data:', err);
+      setApiError(err.message || 'Could not load marketplace listings from API server.');
+      setApiSupplies(mockSupplyListings);
+      setApiBuyers(mockBuyerRequirements);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMarketplaceData();
+  }, []);
+
+  const effectiveSupplies = apiSupplies.length > 0 ? apiSupplies : mockSupplyListings;
+  const effectiveBuyers = apiBuyers.length > 0 ? apiBuyers : mockBuyerRequirements;
+
   // Filter supply listings
   const filteredSupplies = useMemo(() => {
-    return supplyListings.filter((item: SupplyListing) => {
+    return effectiveSupplies.filter((item: SupplyListing) => {
       const matchesSearch =
         item.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.facilityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -67,11 +177,11 @@ export default function MarketplacePage() {
 
       return matchesSearch && matchesPurity && matchesState && matchesDelivery;
     });
-  }, [supplyListings, searchQuery, selectedPurity, selectedState, selectedDelivery]);
+  }, [effectiveSupplies, searchQuery, selectedPurity, selectedState, selectedDelivery]);
 
   // Filter buyer demands
   const filteredBuyers = useMemo(() => {
-    return mockBuyerRequirements.filter((item: BuyerRequirement) => {
+    return effectiveBuyers.filter((item: BuyerRequirement) => {
       const matchesSearch =
         item.buyerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.industry.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -82,10 +192,10 @@ export default function MarketplacePage() {
 
       return matchesSearch && matchesPurity && matchesState;
     });
-  }, [searchQuery, selectedPurity, selectedState]);
+  }, [effectiveBuyers, searchQuery, selectedPurity, selectedState]);
 
-  const totalMonthlySupply = supplyListings.reduce((sum, s) => sum + s.volumeTonnes, 0);
-  const totalMonthlyDemand = mockBuyerRequirements.reduce((sum, b) => sum + b.volumeNeededTonnes, 0);
+  const totalMonthlySupply = effectiveSupplies.reduce((sum, s) => sum + s.volumeTonnes, 0);
+  const totalMonthlyDemand = effectiveBuyers.reduce((sum, b) => sum + b.volumeNeededTonnes, 0);
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 24px' }}>
@@ -200,7 +310,7 @@ export default function MarketplacePage() {
               }}
             >
               <Factory size={16} />
-              Supply Streams ({supplyListings.length})
+              Supply Streams ({effectiveSupplies.length})
             </button>
             <button
               onClick={() => setActiveTab('demand')}
@@ -221,7 +331,7 @@ export default function MarketplacePage() {
               }}
             >
               <Building2 size={16} />
-              Buyer Off-Take Demands ({mockBuyerRequirements.length})
+              Buyer Off-Take Demands ({effectiveBuyers.length})
             </button>
           </div>
 
@@ -338,8 +448,26 @@ export default function MarketplacePage() {
         </div>
       </div>
 
+      {apiError && (
+        <div style={{ marginBottom: 20 }}>
+          <AlertBanner
+            variant="warning"
+            title="Backend Sync Notice"
+            message={`${apiError} Displaying local benchmark registry.`}
+            actionLabel="Retry Sync"
+            onAction={fetchMarketplaceData}
+          />
+        </div>
+      )}
+
       {/* Main Content Area */}
-      {activeTab === 'supply' ? (
+      {isLoading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 20 }}>
+          <SkeletonCard lines={5} />
+          <SkeletonCard lines={5} />
+          <SkeletonCard lines={5} />
+        </div>
+      ) : activeTab === 'supply' ? (
         /* SUPPLY LISTINGS GRID */
         filteredSupplies.length === 0 ? (
           <EmptyState

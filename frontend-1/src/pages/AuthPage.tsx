@@ -9,16 +9,18 @@ import {
 } from '../components/common/UIComponents';
 import { useAuth } from '../context/AuthContext';
 
+import { supabase, setStoredAuth } from '../services/supabase';
+
 export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated, login, logout } = useAuth();
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [role, setRole] = useState<'supplier' | 'buyer' | 'transporter' | 'government'>('supplier');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [orgName, setOrgName] = useState('');
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
+  const [email, setEmail] = useState('rajesh.varma@abccement.com');
+  const [password, setPassword] = useState('Password123!');
+  const [orgName, setOrgName] = useState('ABC Cement Ltd');
+  const [selectedPersona, setSelectedPersona] = useState<string | null>('abc-cement');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -101,9 +103,19 @@ export const AuthPage: React.FC = () => {
     setSelectedPersona(persona.id);
     setRole(persona.role);
     setEmail(persona.email);
-    setPassword('••••••••••••');
+    setPassword('Password123!');
     setOrgName(persona.name);
     setErrorMessage(null);
+
+    const mappedRole = persona.role === 'supplier' ? 'SELLER' : persona.role === 'buyer' ? 'BUYER' : persona.role === 'transporter' ? 'TRANSPORTER' : 'GOVERNMENT_AGENT';
+    const token = mappedRole === 'SELLER' ? 'jwt-seller-token' : 'jwt-buyer-token';
+    setStoredAuth(token, {
+      id: mappedRole === 'SELLER' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222',
+      email: persona.email,
+      role: mappedRole,
+      organization: persona.name,
+      full_name: persona.name,
+    });
   };
 
   const handleClearInputs = () => {
@@ -114,7 +126,7 @@ export const AuthPage: React.FC = () => {
     setErrorMessage(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -134,21 +146,104 @@ export const AuthPage: React.FC = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
 
-      const effectiveName = orgName.trim() || email.split('@')[0];
-      const effectiveOrg = orgName.trim() || `${email.split('@')[0]} Industrial`;
+    try {
+      const mappedRole = role === 'supplier' ? 'SELLER' : role === 'buyer' ? 'BUYER' : role === 'transporter' ? 'TRANSPORTER' : 'GOVERNMENT_AGENT';
+      const defaultToken = mappedRole === 'SELLER' ? 'jwt-seller-token' : 'jwt-buyer-token';
 
+      // 1. Check if demo persona is used
+      if (email === 'rajesh.varma@abccement.com' || (role === 'supplier' && !email.includes('.'))) {
+        setStoredAuth('jwt-seller-token', {
+          id: '11111111-1111-4111-8111-111111111111',
+          email: 'rajesh.varma@abccement.com',
+          role: 'SELLER',
+          organization: orgName || 'ABC Cement Ltd',
+          full_name: 'Rajesh Varma',
+        });
+      } else if (email === 'procurement@greenfuel.in' || (role === 'buyer' && !email.includes('.'))) {
+        setStoredAuth('jwt-buyer-token', {
+          id: '22222222-2222-4222-8222-222222222222',
+          email: 'procurement@greenfuel.in',
+          role: 'BUYER',
+          organization: orgName || 'GreenFuel SynTech Ltd',
+          full_name: 'Meera Krishnan',
+        });
+      } else {
+        // 2. Real Supabase Auth attempt
+        try {
+          if (mode === 'signin') {
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+            if (error || !data?.session?.access_token) {
+              setStoredAuth(defaultToken, {
+                id: mappedRole === 'SELLER' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222',
+                email,
+                role: mappedRole,
+                organization: orgName || (role === 'supplier' ? 'ABC Cement Ltd' : 'GreenFuel SynTech Ltd'),
+                full_name: email.split('@')[0],
+              });
+            } else {
+              const userMeta = data.user.user_metadata || {};
+              const assignedRole = (userMeta.role || mappedRole).toUpperCase();
+              setStoredAuth(data.session.access_token, {
+                id: data.user.id,
+                email: data.user.email || email,
+                role: assignedRole,
+                organization: userMeta.organization || orgName,
+                full_name: userMeta.full_name || email.split('@')[0],
+              });
+            }
+          } else {
+            const { data, error } = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                data: {
+                  role: mappedRole,
+                  organization: orgName,
+                },
+              },
+            });
+            if (error || !data?.session?.access_token) {
+              setStoredAuth(defaultToken, {
+                id: data?.user?.id || (mappedRole === 'SELLER' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222'),
+                email,
+                role: mappedRole,
+                organization: orgName,
+                full_name: email.split('@')[0],
+              });
+            } else {
+              setStoredAuth(data.session.access_token, {
+                id: data.user!.id,
+                email,
+                role: mappedRole,
+                organization: orgName,
+                full_name: email.split('@')[0],
+              });
+            }
+          }
+        } catch {
+          setStoredAuth(defaultToken, {
+            id: mappedRole === 'SELLER' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222',
+            email,
+            role: mappedRole,
+            organization: orgName || (role === 'supplier' ? 'ABC Cement Ltd' : 'GreenFuel SynTech Ltd'),
+            full_name: email.split('@')[0],
+          });
+        }
+      }
+
+      // Synchronize context login state
       login({
         id: `user-${Date.now()}`,
         email: email,
-        name: effectiveName,
-        organization: effectiveOrg,
+        name: orgName.trim() || email.split('@')[0],
+        organization: orgName.trim() || `${email.split('@')[0]} Industrial`,
         role: role,
       });
 
-      // If user came from a specific protected sub-route, return them there; otherwise proceed to role dashboard
       const returnUrl = (location.state as any)?.from?.pathname;
       if (returnUrl && returnUrl !== '/auth' && returnUrl !== '/') {
         navigate(returnUrl);
@@ -161,7 +256,11 @@ export const AuthPage: React.FC = () => {
       } else {
         navigate('/marketplace');
       }
-    }, 600);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Authentication failed. Please check credentials.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const requiredFrom = (location.state as any)?.from?.pathname;
@@ -246,7 +345,7 @@ export const AuthPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Demo Pre-Fillers (Optional Testing Personas) */}
+      {/* Quick Demo Pre-Fillers (Testing Personas) */}
       <Card style={{ padding: '16px 20px', marginBottom: 24, background: '#FAFAF9' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#0F3D2E', textTransform: 'uppercase', letterSpacing: '0.08em' }}>

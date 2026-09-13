@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Card,
@@ -20,23 +20,91 @@ import {
   ExternalLink,
   ArrowLeft,
   Gauge,
-  Thermometer
+  Thermometer,
+  AlertCircle,
+  Play,
+  CheckCheck
 } from 'lucide-react';
+import { carbonLoopApi } from '../services/api';
 
 export default function TransactionStatusPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Find transaction, fallback to TXN-8801 (ABC Cement -> GreenFuel)
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [realJob, setRealJob] = useState<any | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    const fetchTransportData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const jobs = await carbonLoopApi.getTransportJobs();
+        if (jobs && jobs.length > 0) {
+          // Find by id or request_id
+          const matched = jobs.find((j: any) => j.id === id || j.request_id === id);
+          setRealJob(matched || jobs[0]);
+        }
+      } catch (err: any) {
+        console.error('Failed to load transport jobs', err);
+        setError(err.message || 'Error fetching transport status');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransportData();
+  }, [id]);
+
+  const handleUpdateTransportStatus = async (newStatus: 'IN_TRANSIT' | 'DELIVERED') => {
+    if (!realJob) return;
+    setUpdating(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const updated = await carbonLoopApi.updateTransportJobStatus(realJob.id, newStatus);
+      setRealJob(updated);
+      setSuccessMsg(`Transport status updated to ${newStatus} successfully.`);
+    } catch (err: any) {
+      console.error('Failed to update transport status', err);
+      setError(`Failed to update transport status: ${err.message || 'API error'}`);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Find fallback mock transaction
   const txn: Transaction =
     mockTransactions.find((t) => t.id === id) || mockTransactions[0];
 
+  const currentStatus = realJob?.status || (txn ? 'IN_TRANSIT' : 'ASSIGNED');
+
   const stages = [
-    { title: 'Bilateral Term Sheet', desc: 'Signed by ABC Cement & GreenFuel', status: 'completed' },
-    { title: 'Laboratory Purity Assay', desc: 'GC-MS verified 96.0% purity', status: 'completed' },
-    { title: 'Active Road Transit', desc: 'Cryo-Tanker dispatch on NH-48', status: 'active' },
-    { title: 'Custody Transfer & Ledger', desc: 'Off-take manifold intake & cert', status: 'pending' },
+    { 
+      title: 'Bilateral Term Sheet', 
+      desc: 'Signed by Supplier & Off-taker', 
+      status: 'completed' 
+    },
+    { 
+      title: 'Laboratory Purity Assay', 
+      desc: 'GC-MS verified 96.0% purity', 
+      status: 'completed' 
+    },
+    { 
+      title: 'Active Road Transit', 
+      desc: currentStatus === 'IN_TRANSIT' ? 'Cryo-Tanker dispatch on highway' : currentStatus === 'DELIVERED' ? 'Transit completed' : 'Awaiting transporter pickup', 
+      status: currentStatus === 'IN_TRANSIT' ? 'active' : currentStatus === 'DELIVERED' ? 'completed' : 'pending' 
+    },
+    { 
+      title: 'Custody Transfer & Ledger', 
+      desc: currentStatus === 'DELIVERED' ? 'Off-take manifold intake & cert verified' : 'Off-take manifold intake & cert', 
+      status: currentStatus === 'DELIVERED' ? 'completed' : 'pending' 
+    },
   ];
+
 
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto', padding: '32px 24px' }}>
@@ -60,17 +128,32 @@ export default function TransactionStatusPage() {
         Back to Dashboard
       </button>
 
+      {/* Alerts */}
+      {error && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #F87171', color: '#991B1B', padding: '12px 16px', borderRadius: 8, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AlertCircle size={16} />
+          <span style={{ fontSize: 13, fontWeight: 500 }}>{error}</span>
+        </div>
+      )}
+
+      {successMsg && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', color: '#166534', padding: '12px 16px', borderRadius: 8, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CheckCircle2 size={16} color="#166534" />
+          <span style={{ fontSize: 13, fontWeight: 500 }}>{successMsg}</span>
+        </div>
+      )}
+
       <PageHeader
-        badge={`Clearinghouse Protocol • Pipeline #${txn.id}`}
-        title={`Custody Settlement & Transit Tracking — ${txn.id}`}
-        subtitle={`Live bilateral execution between ${txn.sellerName} (Ahmedabad) and ${txn.buyerName} (Vadodara) for ${txn.volumeTonnes} tonnes CO₂.`}
+        badge={`Clearinghouse Protocol • Job #${realJob ? realJob.id.slice(0, 8) : txn.id}`}
+        title={`Custody Settlement & Transit Tracking — ${realJob ? realJob.id.slice(0, 8) : txn.id}`}
+        subtitle={`Live bilateral execution between ${realJob ? realJob.pickup_location : txn.originLocation} and ${realJob ? realJob.delivery_location : txn.destinationLocation}.`}
         actions={
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Button
               variant="outline"
               size="sm"
               icon={<Download size={14} />}
-              onClick={() => alert(`Custody Transfer Note for ${txn.id} downloaded.`)}
+              onClick={() => alert(`Custody Transfer Note downloaded.`)}
             >
               Export Transfer Note
             </Button>
@@ -78,7 +161,7 @@ export default function TransactionStatusPage() {
               variant="primary"
               size="sm"
               icon={<ShieldCheck size={14} />}
-              onClick={() => alert(`Verified Certificate ${txn.carbonAccountingCertId} matches ISO 14064-2 ledger record.`)}
+              onClick={() => alert(`Verified Certificate matches ISO 14064-2 ledger record.`)}
             >
               Verify ISO Stamp
             </Button>
@@ -96,14 +179,14 @@ export default function TransactionStatusPage() {
         }}
       >
         <StatTile
-          label="Contracted Volume"
-          value={txn.volumeTonnes}
-          unit="tonnes CO₂"
+          label="Estimated Freight Cost"
+          value={realJob ? `$${realJob.estimated_cost.toLocaleString()}` : `$${txn.totalValueUSD.toLocaleString()}`}
+          unit={realJob ? `@ ${realJob.distance_km} km` : `@ $${txn.pricePerTonneUSD}/t`}
         />
         <StatTile
-          label="Contract Settlement Value"
-          value={`$${txn.totalValueUSD.toLocaleString()}`}
-          unit={`@ $${txn.pricePerTonneUSD}/t`}
+          label="Corridor Distance"
+          value={realJob ? `${realJob.distance_km}` : `${txn.distanceKm}`}
+          unit="km highway route"
         />
         <StatTile
           label="Net Carbon Displaced"
@@ -113,8 +196,8 @@ export default function TransactionStatusPage() {
         />
         <StatTile
           label="Current Transit Stage"
-          value="In Transit"
-          unit="65% complete"
+          value={currentStatus === 'IN_TRANSIT' ? 'In Transit' : currentStatus === 'DELIVERED' ? 'Delivered' : 'Assigned'}
+          unit={currentStatus === 'DELIVERED' ? '100% complete' : currentStatus === 'IN_TRANSIT' ? '65% complete' : 'Dispatched'}
         />
       </div>
 
@@ -192,42 +275,42 @@ export default function TransactionStatusPage() {
                 <div>
                   <LabelCaps style={{ fontSize: 9 }}>Origin Point</LabelCaps>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1D1B' }}>
-                    {txn.originLocation}
+                    {realJob ? realJob.pickup_location : txn.originLocation}
                   </div>
-                  <div style={{ fontSize: 11, color: '#8A8C8A' }}>ABC Cement Kiln-4 Dispatch Terminal</div>
+                  <div style={{ fontSize: 11, color: '#8A8C8A' }}>Emitter Dispatch Terminal</div>
                 </div>
 
                 <div style={{ textAlign: 'center', padding: '0 16px' }}>
                   <Badge variant="neutral">
-                    <Truck size={12} /> NH-48 Express Corridor
+                    <Truck size={12} /> Highway Corridor
                   </Badge>
                   <div className="tabular-nums" style={{ fontSize: 11, color: '#8A8C8A', marginTop: 4 }}>
-                    Total: {txn.distanceKm} km
+                    Total: {realJob ? realJob.distance_km : txn.distanceKm} km
                   </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
                   <LabelCaps style={{ fontSize: 9 }}>Destination Hub</LabelCaps>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1D1B' }}>
-                    {txn.destinationLocation}
+                    {realJob ? realJob.delivery_location : txn.destinationLocation}
                   </div>
-                  <div style={{ fontSize: 11, color: '#8A8C8A' }}>GreenFuel PtX Synthesis Plant</div>
+                  <div style={{ fontSize: 11, color: '#8A8C8A' }}>Off-taker Synthesis Plant</div>
                 </div>
               </div>
 
               {/* Transit Progress Bar */}
               <div style={{ marginBottom: 8 }}>
                 <ProgressBar
-                  value={txn.stageProgressPercentage}
-                  label="Distance Traversed: 73 km / 112 km (39 km remaining to Vadodara)"
+                  value={currentStatus === 'DELIVERED' ? 100 : currentStatus === 'IN_TRANSIT' ? 65 : 15}
+                  label={currentStatus === 'DELIVERED' ? 'Delivery Completed at Off-take Manifold' : currentStatus === 'IN_TRANSIT' ? `Active Highway Transit: ${realJob ? realJob.distance_km : txn.distanceKm} km` : 'Dispatched to Hauler Depot'}
                   color="#2E9E8A"
                   height={8}
                 />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#5A5C5A' }}>
-                <span>Dispatched: <strong className="tabular-nums">{txn.createdAt}</strong></span>
-                <span>Estimated Arrival: <strong className="tabular-nums">{txn.expectedDeliveryDate}</strong></span>
+                <span>Dispatched: <strong className="tabular-nums">{realJob ? new Date(realJob.created_at).toLocaleDateString() : txn.createdAt}</strong></span>
+                <span>Job Status: <strong className="tabular-nums">{currentStatus}</strong></span>
               </div>
             </div>
 
@@ -260,7 +343,7 @@ export default function TransactionStatusPage() {
                   <span style={{ fontSize: 11 }}>Vehicle Speed</span>
                 </div>
                 <div className="tabular-nums" style={{ fontSize: 15, fontWeight: 700, color: '#1A1D1B' }}>
-                  62 km/h <span style={{ fontSize: 11, color: '#8A8C8A', fontWeight: 500 }}>(Highway)</span>
+                  {currentStatus === 'IN_TRANSIT' ? '62 km/h' : currentStatus === 'DELIVERED' ? '0 km/h (Docked)' : 'Idle at Depot'}
                 </div>
               </div>
             </div>
@@ -269,6 +352,58 @@ export default function TransactionStatusPage() {
 
         {/* FINANCIAL & CARBON LINEAGE RIGHT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24, flex: '1.1' }}>
+          {/* Transporter Dispatch Control Card */}
+          {realJob && (
+            <Card style={{ padding: '24px' }} accentColor="#2E9E8A">
+              <CardHeader
+                title="Transporter & Dispatch Operations"
+                subtitle={`Job ID: ${realJob.id ? realJob.id.slice(0, 8) : 'JOB'}...`}
+                action={
+                  <Badge variant={currentStatus === 'DELIVERED' ? 'teal' : currentStatus === 'IN_TRANSIT' ? 'green' : 'neutral'} dot>
+                    {currentStatus}
+                  </Badge>
+                }
+                style={{ padding: 0, marginBottom: 14 }}
+              />
+              <div style={{ fontSize: 13, color: '#5A5C5A', marginBottom: 16 }}>
+                Operate cryogenic fleet dispatch stages in real-time across the regional transport network.
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(currentStatus === 'ASSIGNED' || currentStatus === 'PENDING' || currentStatus === 'CREATED') && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Play size={13} />}
+                    disabled={updating}
+                    onClick={() => handleUpdateTransportStatus('IN_TRANSIT')}
+                  >
+                    {updating ? 'Updating Fleet...' : 'Dispatch Tanker (Start In-Transit)'}
+                  </Button>
+                )}
+
+                {currentStatus === 'IN_TRANSIT' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<CheckCheck size={14} />}
+                    disabled={updating}
+                    onClick={() => handleUpdateTransportStatus('DELIVERED')}
+                  >
+                    {updating ? 'Confirming...' : 'Confirm Delivery at Off-take Manifold'}
+                  </Button>
+                )}
+
+                {currentStatus === 'DELIVERED' && (
+                  <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 6, padding: '10px 12px', fontSize: 12, color: '#166534', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CheckCircle2 size={15} color="#166534" />
+                    <span>Custody transfer finalized. Off-take volume logged.</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
           {/* Carbon Credit & Accounting Certificate */}
           <Card style={{ padding: '24px' }} accentColor="#0F3D2E">
             <CardHeader

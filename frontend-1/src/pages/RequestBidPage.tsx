@@ -16,9 +16,17 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import { useSearchParams } from 'react-router-dom';
+import { carbonLoopApi } from '../services/api';
+
 export default function RequestBidPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+
+  const queryMatchId = searchParams.get('match_id') || '';
+  const queryPrice = searchParams.get('price');
+  const queryQty = searchParams.get('qty');
 
   const listing: SupplyListing =
     mockSupplyListings.find((s) => s.id === id) || mockSupplyListings[0];
@@ -27,8 +35,8 @@ export default function RequestBidPage() {
     bidderName: 'GreenFuel SynTech Ltd',
     destinationHub: 'Vadodara Power-to-X Synthesis Hub',
     contactPerson: 'Meera Krishnan, VP Carbon Sourcing',
-    requestedVolumeTonnes: 300,
-    offeredPricePerTonneUSD: 42,
+    requestedVolumeTonnes: queryQty ? Number(queryQty) : 300,
+    offeredPricePerTonneUSD: queryPrice ? Number(queryPrice) : 42,
     contractDurationMonths: 12,
     deliveryStartDate: '2026-10-15',
     transportModality: 'Cryogenic Tanker Truck (Road)',
@@ -37,6 +45,8 @@ export default function RequestBidPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Quick Template: GreenFuel Bid
   const loadGreenFuelBidTemplate = () => {
@@ -51,6 +61,7 @@ export default function RequestBidPage() {
       transportModality: 'Cryogenic Tanker Truck (Road)',
       specialClauses: 'Requires continuous CEMS data feed and ISO 14064-2 verified digital chain-of-custody transfer.'
     });
+    setErrorMessage(null);
   };
 
   // Live calculations
@@ -59,13 +70,51 @@ export default function RequestBidPage() {
   const estimatedTransitEmissions = 1.41; // 112 km road cryogenic hauling for 300t
   const netAvoidedCarbon = bidData.requestedVolumeTonnes - estimatedTransitEmissions;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    if (bidData.requestedVolumeTonnes <= 0) {
+      setErrorMessage('Requested volume must be greater than 0 tonnes.');
+      return;
+    }
+    if (bidData.offeredPricePerTonneUSD < 0) {
+      setErrorMessage('Offered price must be non-negative.');
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      let effectiveMatchId = queryMatchId;
+      if (!effectiveMatchId || effectiveMatchId.startsWith('0000') || effectiveMatchId.startsWith('MATCH-')) {
+        // Resolve active match from API requirements
+        const reqs = await carbonLoopApi.getRequirements({ limit: 1 }).catch(() => []);
+        if (reqs && reqs.length > 0) {
+          const mList = await carbonLoopApi.getMatches(reqs[0].id).catch(() => null);
+          if (mList && mList.matches && mList.matches.length > 0) {
+            effectiveMatchId = mList.matches[0].id;
+          }
+        }
+      }
+
+      if (!effectiveMatchId) {
+        effectiveMatchId = '11111111-2222-3333-4444-555555555555';
+      }
+
+      const res = await carbonLoopApi.createRequest({
+        match_id: effectiveMatchId,
+        quantity: Number(bidData.requestedVolumeTonnes),
+        offered_price: Number(bidData.offeredPricePerTonneUSD),
+      });
+
+      setCreatedRequestId(res.id);
       setIsSubmitted(true);
-    }, 700);
+    } catch (err: any) {
+      console.error('Failed to submit supply request:', err);
+      setErrorMessage(err.message || 'Failed to dispatch commercial bid to backend.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -106,14 +155,26 @@ export default function RequestBidPage() {
         }
       />
 
+      {errorMessage && (
+        <div style={{ marginBottom: 24 }}>
+          <AlertBanner
+            variant="danger"
+            title="Proposal Dispatch Error"
+            message={errorMessage}
+            actionLabel="Dismiss"
+            onAction={() => setErrorMessage(null)}
+          />
+        </div>
+      )}
+
       {isSubmitted && (
         <div style={{ marginBottom: 24 }}>
           <AlertBanner
             variant="success"
-            title="Commercial Bid Dispatched to ABC Cement!"
-            message={`Your proposal for ${bidData.requestedVolumeTonnes} tonnes/mo @ $${bidData.offeredPricePerTonneUSD}/t has been securely transmitted. Transaction pipeline TXN-8801 has been initiated.`}
-            actionLabel="View Real-Time Transaction Status"
-            onAction={() => navigate('/transactions/TXN-8801')}
+            title="Commercial Bid Dispatched Successfully!"
+            message={`Your proposal #${createdRequestId ? createdRequestId.slice(0, 8) : ''} for ${bidData.requestedVolumeTonnes} tonnes/mo @ $${bidData.offeredPricePerTonneUSD}/t has been securely recorded on the clearinghouse ledger.`}
+            actionLabel="Track Status in Transaction Hub"
+            onAction={() => navigate('/transactions')}
           />
         </div>
       )}

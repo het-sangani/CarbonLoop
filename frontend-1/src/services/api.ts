@@ -1,7 +1,104 @@
+import { getAuthBearerToken } from './supabase';
 import { SupplyListing, mockSupplyListings } from '../mockData';
 
-// API Base URL from environment or fallback to relative /api (handled by Vite proxy)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// FastAPI Base URL configured via environment variable (fallback to local dev port 8008 or proxy /api)
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8008/api'
+).replace(/\/+$/, '');
+
+/**
+ * Standard API error wrapper
+ */
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+/**
+ * Low-level HTTP client with automatic Bearer token injection and error handling
+ */
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  
+  const headers = new Headers(options.headers || {});
+  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  // Inject user Bearer token if not already explicitly provided
+  if (!headers.has('Authorization')) {
+    const token = await getAuthBearerToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (err: any) {
+    throw new ApiError(
+      `Network connection to backend server failed (${url}). Please ensure the FastAPI backend is running.`,
+      0,
+      err
+    );
+  }
+
+  let responseData: any = null;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      responseData = await response.json();
+    } catch {
+      responseData = null;
+    }
+  } else {
+    responseData = await response.text();
+  }
+
+  if (!response.ok) {
+    let errorMsg = 'An unexpected API error occurred';
+    if (responseData && typeof responseData === 'object') {
+      if (typeof responseData.detail === 'string') {
+        errorMsg = responseData.detail;
+      } else if (Array.isArray(responseData.detail)) {
+        errorMsg = responseData.detail.map((d: any) => `${d.loc?.slice(-1)[0] || 'field'}: ${d.msg}`).join(', ');
+      } else if (responseData.message) {
+        errorMsg = responseData.message;
+      }
+    } else if (typeof responseData === 'string' && responseData.length < 200) {
+      errorMsg = responseData;
+    }
+    throw new ApiError(errorMsg, response.status, responseData);
+  }
+
+  return responseData as T;
+}
+
+// ---------------------------------------------------------------------------
+// DATA SCHEMAS & TYPES
+// ---------------------------------------------------------------------------
+
+export interface ApiListing {
+  id: string;
+  seller_id?: string;
+  quantity: number;
+  purity: number;
+  location: string;
+  availability_start?: string | null;
+  availability_end?: string | null;
+  asking_price: number;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface BackendListingResponse {
   id: string;
@@ -41,20 +138,109 @@ export interface DbHealthResponse {
   error?: string;
 }
 
-/**
- * Transforms a backend Supabase-persisted listing into the rich frontend SupplyListing model.
- */
-export function transformBackendListingToFrontend(b: BackendListingResponse): SupplyListing {
+export interface ApiRequirement {
+  id: string;
+  buyer_id?: string;
+  min_purity: number;
+  required_quantity: number;
+  delivery_location: string;
+  max_budget?: number | null;
+  required_date?: string | null;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ApiLogisticsEstimate {
+  distance_km: number;
+  is_fallback_distance: boolean;
+  quantity_tonnes: number;
+  price_per_tonne: number;
+  trips_required: number;
+  co2_purchase_cost: number;
+  transport_estimated_cost: number;
+  total_estimated_cost: number;
+  cost_per_tonne: number;
+  transit_emissions_kg: number;
+  disclaimer: string;
+}
+
+export interface ApiMatchItem {
+  id: string;
+  listing_id: string;
+  requirement_id: string;
+  listing: ApiListing;
+  match_score: number;
+  purity_score: number;
+  quantity_score: number;
+  location_score: number;
+  availability_score: number;
+  price_score: number;
+  distance_km?: number | null;
+  explanation: string;
+  explanation_points?: string[];
+  logistics?: ApiLogisticsEstimate | null;
+  created_at?: string;
+}
+
+export interface ApiMatchList {
+  requirement_id: string;
+  total_matches: number;
+  matches: ApiMatchItem[];
+}
+
+export interface ApiSupplyRequest {
+  id: string;
+  match_id: string;
+  buyer_id: string;
+  seller_id: string;
+  quantity: number;
+  offered_price: number;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  created_at?: string;
+}
+
+export interface ApiTransportJob {
+  id: string;
+  request_id: string;
+  transporter_id?: string | null;
+  pickup_location: string;
+  delivery_location: string;
+  distance_km: number;
+  estimated_cost: number;
+  status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED';
+  created_at?: string;
+}
+
+export interface ApiProfile {
+  id: string;
+  full_name?: string;
+  organization?: string;
+  role: 'BUYER' | 'SELLER' | 'TRANSPORTER' | 'GOVERNMENT_AGENT';
+  created_at?: string;
+}
+
+export interface ApiAuthenticatedUser {
+  id: string;
+  email?: string;
+  profile?: ApiProfile;
+  role?: 'BUYER' | 'SELLER' | 'TRANSPORTER' | 'GOVERNMENT_AGENT';
+}
+
+// ---------------------------------------------------------------------------
+// TRANSFORMATION HELPERS
+// ---------------------------------------------------------------------------
+
+export function transformBackendListingToFrontend(b: BackendListingResponse | ApiListing): SupplyListing {
   const locationParts = (b.location || '').split(',').map((s) => s.trim());
   const city = locationParts[0] || 'Gujarat Facility';
   const state = locationParts[1] || 'Gujarat';
 
-  // Normalize status for frontend compatibility
   let frontendStatus: 'active' | 'in-negotiation' | 'fulfilled' = 'active';
   const rawStatus = (b.status || '').toLowerCase();
   if (rawStatus === 'in_negotiation' || rawStatus === 'in-negotiation' || rawStatus === 'pending') {
     frontendStatus = 'in-negotiation';
-  } else if (rawStatus === 'sold' || rawStatus === 'fulfilled' || rawStatus === 'cancelled') {
+  } else if (rawStatus === 'sold' || rawStatus === 'fulfilled' || rawStatus === 'cancelled' || rawStatus === 'closed') {
     frontendStatus = 'fulfilled';
   }
 
@@ -81,111 +267,61 @@ export function transformBackendListingToFrontend(b: BackendListingResponse): Su
     pressureBar: 18.5,
     temperatureC: -22.0,
     pricePerTonneUSD: b.asking_price,
-    availableFrom: b.availability_start || new Date().toISOString().split('T')[0],
+    availableFrom: b.availability_start ? b.availability_start.split('T')[0] : new Date().toISOString().split('T')[0],
     deliveryTerms: 'Ex-Works Pipeline / Cryogenic ISO Tanker',
     status: frontendStatus,
     verificationLevel: 'ISO 14064-2 Verified / CEMS Synchronized',
-    description: `Real-time verified industrial capture output from ${b.location}. Continuous telemetry synchronized with Supabase clearinghouse database.`,
+    description: `Real-time verified industrial capture output from ${b.location}. Continuous telemetry synchronized with clearinghouse registry.`,
     contactPerson: b.seller_id ? `Operations Lead (${b.seller_id})` : 'Industrial Plant Dispatch',
   };
 }
 
-/**
- * Check FastAPI backend service health.
- */
+// ---------------------------------------------------------------------------
+// CONVENIENCE HELPERS
+// ---------------------------------------------------------------------------
+
 export async function checkHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE_URL}/health`, {
-    headers: { Accept: 'application/json' },
-  });
-  if (!res.ok) {
-    throw new Error(`Health check failed with status: ${res.status}`);
-  }
-  return res.json();
+  return request<HealthResponse>('/health');
 }
 
-/**
- * Check Supabase database connectivity through FastAPI.
- */
 export async function checkDbHealth(): Promise<DbHealthResponse> {
-  const res = await fetch(`${API_BASE_URL}/health/db`, {
-    headers: { Accept: 'application/json' },
-  });
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.detail?.message || `DB Health check failed with status: ${res.status}`);
-  }
-  return res.json();
+  return request<DbHealthResponse>('/health/db');
 }
 
-/**
- * Fetch CO2 supply listings from the FastAPI backend.
- * Merges backend listings with baseline mock listings so existing UI demos
- * remain rich while new database-created listings are immediately visible.
- */
 export async function getSupplyListings(filters?: {
   status?: string;
   min_purity?: number;
   min_quantity?: number;
   max_price?: number;
 }): Promise<SupplyListing[]> {
-  const params = new URLSearchParams();
-  if (filters?.status) params.append('status', filters.status);
-  if (filters?.min_purity !== undefined) params.append('min_purity', filters.min_purity.toString());
-  if (filters?.min_quantity !== undefined) params.append('min_quantity', filters.min_quantity.toString());
-  if (filters?.max_price !== undefined) params.append('max_price', filters.max_price.toString());
-
-  const url = `${API_BASE_URL}/listings${params.toString() ? `?${params.toString()}` : ''}`;
-  
   try {
-    const res = await fetch(url, {
-      headers: { credentials: 'omit', Accept: 'application/json' },
+    const backendListings = await carbonLoopApi.getListings({
+      status: filters?.status,
+      min_purity: filters?.min_purity,
     });
-
-    if (!res.ok) {
-      console.warn(`[CarbonLoop API] /listings returned ${res.status}. Falling back to baseline catalog.`);
-      return mockSupplyListings;
-    }
-
-    const backendListings: BackendListingResponse[] = await res.json();
-    const transformedBackendListings = backendListings.map(transformBackendListingToFrontend);
-
-    // Merge: backend listings first, then any baseline mock listings whose IDs don't collide
-    const existingBackendIds = new Set(transformedBackendListings.map((l) => l.id));
+    const transformed = backendListings.map(transformBackendListingToFrontend);
+    const existingBackendIds = new Set(transformed.map((l) => l.id));
     const remainingMock = mockSupplyListings.filter((m) => !existingBackendIds.has(m.id));
-
-    return [...transformedBackendListings, ...remainingMock];
+    return [...transformed, ...remainingMock];
   } catch (err) {
     console.warn('[CarbonLoop API] Network error connecting to backend. Serving baseline catalog.', err);
     return mockSupplyListings;
   }
 }
 
-/**
- * Fetch a single CO2 supply listing by ID.
- */
 export async function getSupplyListingById(id: string): Promise<SupplyListing | undefined> {
-  // If it's a known mock ID, return from mockData first
   const mockMatch = mockSupplyListings.find((s) => s.id === id);
-
   try {
-    const res = await fetch(`${API_BASE_URL}/listings/${id}`, {
-      headers: { Accept: 'application/json' },
-    });
-
-    if (res.ok) {
-      const backendListing: BackendListingResponse = await res.json();
+    const backendListing = await carbonLoopApi.getListingById(id);
+    if (backendListing) {
       return transformBackendListingToFrontend(backendListing);
     }
   } catch (err) {
     console.warn(`[CarbonLoop API] Failed to fetch listing ${id} from backend:`, err);
   }
-
   return mockMatch || mockSupplyListings[0];
 }
 
-/**
- * Create a new CO2 supply listing in FastAPI / Supabase.
- */
 export async function createSupplyListing(payload: {
   companyName?: string;
   facilityName?: string;
@@ -197,34 +333,182 @@ export async function createSupplyListing(payload: {
   availableFrom?: string;
   deliveryTerms?: string;
   contactPerson?: string;
-}): Promise<BackendListingResponse> {
+}): Promise<ApiListing> {
   const location = `${payload.city.trim()}, ${payload.state.trim()}`;
-
-  const body: BackendListingCreate = {
+  return carbonLoopApi.createListing({
     quantity: Number(payload.volumeTonnes),
     purity: Number(payload.co2Purity),
     location: location,
     asking_price: Number(payload.pricePerTonneUSD),
-    status: 'AVAILABLE',
-    seller_id: payload.companyName || 'Verified Industrial Seller',
-    availability_start: payload.availableFrom || undefined,
-  };
-
-  const res = await fetch(`${API_BASE_URL}/listings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-Seller-ID': payload.companyName || 'ABC Cement Ltd',
-    },
-    body: JSON.stringify(body),
+    availability_start: payload.availableFrom ? `${payload.availableFrom}T00:00:00Z` : null,
   });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    const message = errorData.detail || `Failed to create listing (status ${res.status})`;
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
-  }
-
-  return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// API SERVICE METHODS
+// ---------------------------------------------------------------------------
+
+export const carbonLoopApi = {
+  // Auth
+  async getMe(): Promise<ApiAuthenticatedUser> {
+    return request<ApiAuthenticatedUser>('/auth/me');
+  },
+
+  // Listings (Marketplace & Supplier)
+  async getListings(params?: {
+    status?: string;
+    min_purity?: number;
+    seller_id?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiListing[]> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.min_purity !== undefined) query.set('min_purity', String(params.min_purity));
+    if (params?.seller_id) query.set('seller_id', params.seller_id);
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+
+    const qs = query.toString();
+    return request<ApiListing[]>(`/listings${qs ? `?${qs}` : ''}`);
+  },
+
+  async getListingById(id: string): Promise<ApiListing> {
+    return request<ApiListing>(`/listings/${encodeURIComponent(id)}`);
+  },
+
+  // Alias for getListingById for compatibility
+  async getListing(id: string): Promise<ApiListing> {
+    return this.getListingById(id);
+  },
+
+  async createListing(data: {
+    quantity: number;
+    purity: number;
+    location: string;
+    asking_price: number;
+    availability_start?: string | null;
+    availability_end?: string | null;
+  }): Promise<ApiListing> {
+    return request<ApiListing>('/listings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Requirements (Buyer)
+  async getRequirements(params?: {
+    status?: string;
+    min_purity?: number;
+    buyer_id?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiRequirement[]> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.min_purity !== undefined) query.set('min_purity', String(params.min_purity));
+    if (params?.buyer_id) query.set('buyer_id', params.buyer_id);
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+
+    const qs = query.toString();
+    return request<ApiRequirement[]>(`/requirements${qs ? `?${qs}` : ''}`);
+  },
+
+  async getRequirementById(id: string): Promise<ApiRequirement> {
+    return request<ApiRequirement>(`/requirements/${encodeURIComponent(id)}`);
+  },
+
+  async createRequirement(data: {
+    min_purity: number;
+    required_quantity: number;
+    delivery_location: string;
+    max_budget?: number | null;
+    required_date?: string | null;
+  }): Promise<ApiRequirement> {
+    return request<ApiRequirement>('/requirements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Matchmaking Engine
+  async getMatches(requirementId: string): Promise<ApiMatchList> {
+    return request<ApiMatchList>(`/matches/${encodeURIComponent(requirementId)}`);
+  },
+
+  // Logistics & Cost Estimate
+  async estimateLogistics(data: {
+    pickup_location: string;
+    delivery_location: string;
+    quantity_tonnes: number;
+    price_per_tonne: number;
+  }): Promise<ApiLogisticsEstimate> {
+    return request<ApiLogisticsEstimate>('/logistics/estimate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Requests / Bidding
+  async createRequest(data: {
+    match_id: string;
+    quantity: number;
+    offered_price: number;
+    seller_id?: string;
+  }): Promise<ApiSupplyRequest> {
+    return request<ApiSupplyRequest>('/requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getRequests(status?: string): Promise<ApiSupplyRequest[]> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<ApiSupplyRequest[]>(`/requests${qs}`);
+  },
+
+  async getRequestById(id: string): Promise<ApiSupplyRequest> {
+    return request<ApiSupplyRequest>(`/requests/${encodeURIComponent(id)}`);
+  },
+
+  async updateRequestStatus(
+    id: string,
+    status: 'ACCEPTED' | 'REJECTED'
+  ): Promise<ApiSupplyRequest> {
+    return request<ApiSupplyRequest>(`/requests/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // Transport Jobs
+  async createTransportJob(data: {
+    request_id: string;
+    transporter_id?: string;
+  }): Promise<ApiTransportJob> {
+    return request<ApiTransportJob>('/transport/jobs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getTransportJobs(status?: string): Promise<ApiTransportJob[]> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<ApiTransportJob[]>(`/transport/jobs${qs}`);
+  },
+
+  async getTransportJobById(id: string): Promise<ApiTransportJob> {
+    return request<ApiTransportJob>(`/transport/jobs/${encodeURIComponent(id)}`);
+  },
+
+  async updateTransportJobStatus(
+    id: string,
+    status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED'
+  ): Promise<ApiTransportJob> {
+    return request<ApiTransportJob>(`/transport/jobs/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+};

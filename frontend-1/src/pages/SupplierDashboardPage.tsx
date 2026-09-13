@@ -11,33 +11,78 @@ import {
   SkeletonCard 
 } from '../components/common/UIComponents';
 import { mockSupplyListings, mockMatchResults, SupplyListing } from '../mockData';
-import { getSupplyListings } from '../services/api';
-import { Sparkles, Eye, Plus, CheckCircle2, RotateCcw, Building2 } from 'lucide-react';
+import { Sparkles, Plus, CheckCircle2, RotateCcw, Check, X, AlertCircle, Building2 } from 'lucide-react';
+import { carbonLoopApi, transformBackendListingToFrontend } from '../services/api';
 
 export const SupplierDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'listings' | 'bids' | 'matches'>('listings');
-  const [simLoading, setSimLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showEmptyDemo, setShowEmptyDemo] = useState(false);
-
+  
+  // Real API state
+  const [realListings, setRealListings] = useState<any[]>([]);
+  const [realRequests, setRealRequests] = useState<any[]>([]);
   const [supplyListings, setSupplyListings] = useState<SupplyListing[]>(mockSupplyListings);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>(mockSupplyListings[0].id);
 
-  useEffect(() => {
-    getSupplyListings().then((listings) => {
-      if (listings && listings.length > 0) {
-        setSupplyListings(listings);
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [listingsRes, requestsRes] = await Promise.allSettled([
+        carbonLoopApi.getListings(),
+        carbonLoopApi.getRequests()
+      ]);
+
+      if (listingsRes.status === 'fulfilled' && listingsRes.value) {
+        setRealListings(listingsRes.value);
+        if (listingsRes.value.length > 0) {
+          const transformed = listingsRes.value.map(transformBackendListingToFrontend);
+          const existingIds = new Set(transformed.map((l) => l.id));
+          setSupplyListings([...transformed, ...mockSupplyListings.filter((m) => !existingIds.has(m.id))]);
+        }
       }
-    });
+      if (requestsRes.status === 'fulfilled' && requestsRes.value) {
+        setRealRequests(requestsRes.value);
+      }
+    } catch (err: any) {
+      console.error('Failed to load supplier data', err);
+      setError(err.message || 'Error connecting to backend services.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
 
-  const activeListing = supplyListings.find((s) => s.id === selectedSupplierId) || supplyListings[0];
-  const activeMatch = mockMatchResults.find((m) => m.supplyListingId === activeListing.id) || mockMatchResults[0];
-
   const toggleLoadingDemo = () => {
-    setSimLoading(true);
-    setTimeout(() => setSimLoading(false), 900);
+    fetchDashboardData();
   };
+
+  const handleUpdateStatus = async (requestId: string, newStatus: 'ACCEPTED' | 'REJECTED') => {
+    setUpdatingId(requestId);
+    setError(null);
+    setActionSuccess(null);
+    try {
+      await carbonLoopApi.updateRequestStatus(requestId, newStatus);
+      setActionSuccess(`Request ${requestId.slice(0, 8)}... successfully marked as ${newStatus}!`);
+      // Update local state immediately
+      setRealRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
+    } catch (err: any) {
+      console.error('Failed to update request', err);
+      setError(`Failed to update request: ${err.message || 'API error'}`);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const activeListing = supplyListings.find((s) => s.id === selectedSupplierId) || supplyListings[0];
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 24px 64px' }}>
@@ -107,6 +152,24 @@ export const SupplierDashboardPage: React.FC = () => {
         }
       />
 
+      {/* Status Alerts */}
+      {error && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #F87171', color: '#991B1B', padding: '12px 16px', borderRadius: 8, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={16} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{error}</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={fetchDashboardData}>Retry</Button>
+        </div>
+      )}
+
+      {actionSuccess && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', color: '#166534', padding: '12px 16px', borderRadius: 8, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CheckCircle2 size={16} color="#166534" />
+          <span style={{ fontSize: 13, fontWeight: 500 }}>{actionSuccess}</span>
+        </div>
+      )}
+
       {/* Facility Profile Overview Banner */}
       <Card style={{ padding: '20px 24px', marginBottom: 28, background: '#FFFFFF' }} accentColor="#0F3D2E">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
@@ -144,20 +207,20 @@ export const SupplierDashboardPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
         <StatTile
           label="Active Monthly Output"
-          value={String(activeListing.volumeTonnes)}
+          value={realListings.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0) || String(activeListing.volumeTonnes)}
           unit="t/mo"
-          delta="+50t"
+          delta={realListings.length > 0 ? `${realListings.length} stream(s)` : '+50t'}
         />
         <StatTile
           label="Assayed CO₂ Purity"
           value={activeListing.composition.co2Purity.toFixed(1)}
           unit="%"
-          delta="+0.8%"
+          delta="Assay Verified"
         />
         <StatTile
           label="Inbound Bilateral Bids"
-          value="1"
-          unit="active tender"
+          value={realRequests.length || '1'}
+          unit={realRequests.length === 1 ? 'active tender' : 'active tenders'}
         />
         <StatTile
           label="Monthly Off-Take Value"
@@ -170,8 +233,8 @@ export const SupplierDashboardPage: React.FC = () => {
       {/* Interactive Tabs with Count Badges */}
       <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #E5E5E2', marginBottom: 20 }}>
         {[
-          { key: 'listings', label: 'Active Stream Listings', count: 1 },
-          { key: 'bids', label: 'Inbound Procurement Bids', count: 1 },
+          { key: 'listings', label: 'Active Stream Listings', count: realListings.length || supplyListings.length },
+          { key: 'bids', label: 'Inbound Procurement Bids', count: realRequests.length || 1 },
           { key: 'matches', label: 'Algorithmic Off-taker Matches', count: 2 },
         ].map((tab) => {
           const isActive = activeTab === tab.key;
@@ -217,19 +280,11 @@ export const SupplierDashboardPage: React.FC = () => {
       </div>
 
       {/* Loading Skeleton State */}
-      {simLoading ? (
+      {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
           <SkeletonCard lines={4} />
           <SkeletonCard lines={4} />
         </div>
-      ) : showEmptyDemo ? (
-        /* Empty State Demo */
-        <EmptyState
-          title="No Streams Currently Listed"
-          description="You do not have any carbon capture output streams published in the regional clearinghouse yet."
-          actionLabel="Publish First Supply Stream"
-          onAction={() => navigate('/supplier/create-listing')}
-        />
       ) : (
         <>
           {/* Tab 1: Listings */}
@@ -299,47 +354,125 @@ export const SupplierDashboardPage: React.FC = () => {
             <Card>
               <CardHeader
                 title="Inbound Commercial Off-Take Proposals"
-                subtitle="Review binding bilateral off-take offers from qualified industrial buyers."
+                subtitle="Review binding bilateral off-take offers from qualified industrial buyers. Accept to commission a transport job."
               />
-              <div style={{ padding: '20px' }}>
-                <div
-                  style={{
-                    border: '1px solid #E5E5E2',
-                    borderRadius: 8,
-                    padding: '18px 20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 16,
-                    background: '#FAFAF9'
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1D1B' }}>
-                        GreenFuel SynTech Ltd
-                      </span>
-                      <Badge variant="teal">e-SAF Pilot Line</Badge>
-                      <Badge variant="neutral">Vadodara Hub (112 km)</Badge>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#5A5C5A' }}>
-                      Requested Volume: <strong className="tabular-nums" style={{ color: '#1A1D1B' }}>300 tonnes/month</strong> · Offered Price: <strong className="tabular-nums" style={{ color: '#0F3D2E' }}>$42 / tonne</strong>
-                    </div>
-                    <div className="tabular-nums" style={{ fontSize: 12, color: '#8A8C8A', marginTop: 4 }}>
-                      Monthly Settlement: $12,600 · Cryogenic Road Transport via NH-48 Corridor
-                    </div>
-                  </div>
+              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {realRequests.length > 0 ? (
+                  realRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      style={{
+                        border: '1px solid #E5E5E2',
+                        borderRadius: 8,
+                        padding: '18px 20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 16,
+                        background: req.status === 'ACCEPTED' ? '#F0FDF4' : '#FAFAF9'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1D1B' }}>
+                            Inbound Offer #{req.id ? req.id.slice(0, 8) : 'REQ'}
+                          </span>
+                          <Badge 
+                            variant={req.status === 'ACCEPTED' ? 'green' : req.status === 'REJECTED' ? 'neutral' : 'teal'}
+                            dot={req.status === 'PENDING'}
+                          >
+                            {req.status === 'ACCEPTED' ? 'Accepted by You' : req.status === 'REJECTED' ? 'Declined' : 'Pending Review'}
+                          </Badge>
+                          <span style={{ fontSize: 12, color: '#8A8C8A' }}>
+                            Buyer ID: {req.buyer_id ? req.buyer_id.slice(0, 8) : 'buyer'}...
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 13, color: '#5A5C5A' }}>
+                          Requested Volume: <strong className="tabular-nums" style={{ color: '#1A1D1B' }}>{req.quantity} tonnes</strong> · Offered Price: <strong className="tabular-nums" style={{ color: '#0F3D2E' }}>${req.offered_price} / tonne</strong>
+                        </div>
+                        <div className="tabular-nums" style={{ fontSize: 12, color: '#8A8C8A', marginTop: 4 }}>
+                          Total Settlement: ${(req.quantity * req.offered_price).toLocaleString()} · Match Ref: {req.match_id ? req.match_id.slice(0, 8) : 'M-DIRECT'}...
+                        </div>
+                      </div>
 
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Button size="sm" variant="outline" onClick={() => navigate('/transactions/TXN-8801')}>
-                      View Active Deal
-                    </Button>
-                    <Button size="sm" variant="primary" onClick={() => navigate('/matches')}>
-                      Review 96% Match
-                    </Button>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {req.status === 'PENDING' ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              style={{ borderColor: '#FCA5A5', color: '#B91C1C' }}
+                              icon={<X size={13} />}
+                              disabled={updatingId === req.id}
+                              onClick={() => handleUpdateStatus(req.id, 'REJECTED')}
+                            >
+                              Decline
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              icon={<Check size={13} />}
+                              disabled={updatingId === req.id}
+                              onClick={() => handleUpdateStatus(req.id, 'ACCEPTED')}
+                            >
+                              {updatingId === req.id ? 'Processing...' : 'Accept Offer'}
+                            </Button>
+                          </>
+                        ) : req.status === 'ACCEPTED' ? (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => navigate(`/transactions/${req.id}`)}
+                          >
+                            Track Transport & Logistics →
+                          </Button>
+                        ) : (
+                          <Badge variant="neutral">Declined</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div
+                    style={{
+                      border: '1px solid #E5E5E2',
+                      borderRadius: 8,
+                      padding: '18px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 16,
+                      background: '#FAFAF9'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1D1B' }}>
+                          GreenFuel SynTech Ltd
+                        </span>
+                        <Badge variant="teal">e-SAF Pilot Line</Badge>
+                        <Badge variant="neutral">Vadodara Hub (112 km)</Badge>
+                      </div>
+                      <div style={{ fontSize: 13, color: '#5A5C5A' }}>
+                        Requested Volume: <strong className="tabular-nums" style={{ color: '#1A1D1B' }}>300 tonnes/month</strong> · Offered Price: <strong className="tabular-nums" style={{ color: '#0F3D2E' }}>$42 / tonne</strong>
+                      </div>
+                      <div className="tabular-nums" style={{ fontSize: 12, color: '#8A8C8A', marginTop: 4 }}>
+                        Monthly Settlement: $12,600 · Cryogenic Road Transport via NH-48 Corridor
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/transactions/TXN-8801')}>
+                        View Active Deal
+                      </Button>
+                      <Button size="sm" variant="primary" onClick={() => navigate('/matches')}>
+                        Review 96% Match
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </Card>
           )}

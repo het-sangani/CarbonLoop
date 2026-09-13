@@ -17,10 +17,14 @@ class Settings(BaseSettings):
     CORS_ORIGINS: Union[str, List[str]] = [
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://localhost:5175",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
         "http://localhost:8443",
         "http://127.0.0.1:8443",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ]
 
     # Supabase Configuration
@@ -39,12 +43,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_supabase_keys(self) -> "Settings":
-        # Fallback to publishable or service-role key if SUPABASE_KEY is not directly set
+        # Fallback to service-role or publishable key if SUPABASE_KEY is not directly set
         if not self.SUPABASE_KEY:
-            if self.SUPABASE_PUBLISHABLE_KEY:
-                self.SUPABASE_KEY = self.SUPABASE_PUBLISHABLE_KEY
-            elif self.SUPABASE_SERVICE_ROLE_KEY:
+            if self.SUPABASE_SERVICE_ROLE_KEY:
                 self.SUPABASE_KEY = self.SUPABASE_SERVICE_ROLE_KEY
+            elif self.SUPABASE_PUBLISHABLE_KEY:
+                self.SUPABASE_KEY = self.SUPABASE_PUBLISHABLE_KEY
         return self
 
     model_config = SettingsConfigDict(

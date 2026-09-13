@@ -16,7 +16,7 @@ import {
   Gauge
 } from 'lucide-react';
 
-import { createSupplyListing } from '../services/api';
+import { carbonLoopApi } from '../services/api';
 
 export default function CreateSupplyListingPage() {
   const navigate = useNavigate();
@@ -75,20 +75,47 @@ export default function CreateSupplyListingPage() {
       description: 'Post-combustion amine capture slipstream with integrated dehydration and liquefaction sub-station at Ahmedabad Kiln-4.',
       contactPerson: 'Rajesh Varma, VP Industrial Decarbonization'
     });
+    setErrorMessage(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    // Form validations
+    if (!formData.volumeTonnes || formData.volumeTonnes <= 0) {
+      setErrorMessage('Please specify a valid monthly capture volume greater than 0 tonnes.');
+      return;
+    }
+    if (formData.co2Purity < 50 || formData.co2Purity > 100) {
+      setErrorMessage('CO2 purity percentage must be between 50.0% and 100.0%.');
+      return;
+    }
+    if (formData.pricePerTonneUSD < 0) {
+      setErrorMessage('Asking price per tonne cannot be negative.');
+      return;
+    }
+
+    const cityLoc = formData.city.trim() || 'Ahmedabad';
+    const loc = `${cityLoc}, ${formData.state || 'Gujarat'}`;
+
     setIsSubmitting(true);
     try {
-      const response = await createSupplyListing(formData);
-      setCreatedListingId(response.id);
-      setIsSubmitting(false);
+      const res = await carbonLoopApi.createListing({
+        quantity: Number(formData.volumeTonnes),
+        purity: Number(formData.co2Purity),
+        location: loc,
+        asking_price: Number(formData.pricePerTonneUSD),
+        availability_start: formData.availableFrom ? `${formData.availableFrom}T00:00:00Z` : null,
+      });
+
+      setCreatedListingId(res.id);
       setSubmitted(true);
     } catch (err: any) {
+      console.error('Failed to publish listing:', err);
+      setErrorMessage(err.message || 'Failed to publish supply listing to the backend API.');
+    } finally {
       setIsSubmitting(false);
-      setErrorMessage(err.message || 'Failed to publish listing to the registry. Please ensure the backend server is running.');
     }
   };
 
@@ -114,7 +141,7 @@ export default function CreateSupplyListingPage() {
         <div style={{ marginBottom: 24 }}>
           <AlertBanner
             variant="error"
-            title="Listing Creation Notice"
+            title="Publication Error"
             message={errorMessage}
             onDismiss={() => setErrorMessage(null)}
           />
@@ -126,7 +153,7 @@ export default function CreateSupplyListingPage() {
           <AlertBanner
             variant="success"
             title="Stream Published Successfully to Database!"
-            message={`Your listing for ${formData.companyName || 'ABC Cement'} (${formData.volumeTonnes} tonnes/mo at ${formData.co2Purity}% purity) has been persisted to the Supabase clearinghouse database${createdListingId ? ` (ID: ${createdListingId})` : ''}.`}
+            message={`Your listing #${createdListingId ? createdListingId.slice(0, 8) : ''} for ${formData.companyName || 'ABC Cement'} (${formData.volumeTonnes} tonnes/mo at ${formData.co2Purity}% purity in ${formData.city || 'Ahmedabad'}) has been persisted to the clearinghouse database.`}
             actionLabel="View in Marketplace"
             onAction={() => navigate('/marketplace')}
           />

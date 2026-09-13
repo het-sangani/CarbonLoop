@@ -1,0 +1,607 @@
+{
+  "info": {
+    "_postman_id": "c7a8e291-0e7d-4c3e-8fa9-974a28461d33",
+    "name": "CarbonLoop API - Steps 8 to 11",
+    "description": "Comprehensive Postman collection for CarbonLoop Backend Steps 8 (CO2 Listings), 9 (Buyer Requirements), 10 (Supabase Authentication & Authorization), and 11 (Rule-Based Matchmaking Engine).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8008",
+      "type": "string"
+    },
+    {
+      "key": "sellerToken",
+      "value": "YOUR_SELLER_SUPABASE_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "buyerToken",
+      "value": "YOUR_BUYER_SUPABASE_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "listingId",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "requirementId",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Step 8 - Listings",
+      "item": [
+        {
+          "name": "Create Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sellerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 500.0,\n  \"purity\": 98.5,\n  \"location\": \"Dahej, Gujarat\",\n  \"availability_start\": \"2026-10-01T00:00:00Z\",\n  \"availability_end\": \"2026-12-31T23:59:59Z\",\n  \"asking_price\": 45.0,\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/listings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings"]
+            }
+          }
+        },
+        {
+          "name": "Get Listings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/listings?limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "min_purity", "value": "95.0", "disabled": true },
+                { "key": "status", "value": "active", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Listing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/listings/{{listingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings", "{{listingId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Listing",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sellerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asking_price\": 42.5,\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/listings/{{listingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings", "{{listingId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Listing",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sellerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/listings/{{listingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings", "{{listingId}}"]
+            }
+          }
+        },
+        {
+          "name": "Validation Tests",
+          "item": [
+            {
+              "name": "Invalid Quantity Zero (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{sellerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"quantity\": 0.0,\n  \"purity\": 95.0,\n  \"location\": \"Dahej\",\n  \"asking_price\": 40.0\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/listings", "host": ["{{baseUrl}}"], "path": ["api", "listings"] }
+              }
+            },
+            {
+              "name": "Invalid Purity Above 100 (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{sellerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"quantity\": 500.0,\n  \"purity\": 105.0,\n  \"location\": \"Dahej\",\n  \"asking_price\": 40.0\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/listings", "host": ["{{baseUrl}}"], "path": ["api", "listings"] }
+              }
+            },
+            {
+              "name": "Invalid Negative Price (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{sellerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"quantity\": 500.0,\n  \"purity\": 95.0,\n  \"location\": \"Dahej\",\n  \"asking_price\": -10.0\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/listings", "host": ["{{baseUrl}}"], "path": ["api", "listings"] }
+              }
+            },
+            {
+              "name": "Invalid Date Window (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{sellerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"quantity\": 500.0,\n  \"purity\": 95.0,\n  \"location\": \"Dahej\",\n  \"availability_start\": \"2026-12-31T00:00:00Z\",\n  \"availability_end\": \"2026-01-01T00:00:00Z\",\n  \"asking_price\": 40.0\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/listings", "host": ["{{baseUrl}}"], "path": ["api", "listings"] }
+              }
+            },
+            {
+              "name": "Malformed Body (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{sellerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"quantity\": \"not_a_number\"\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/listings", "host": ["{{baseUrl}}"], "path": ["api", "listings"] }
+              }
+            },
+            {
+              "name": "Nonexistent Listing (404)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/listings/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "listings", "00000000-0000-0000-0000-000000000000"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Step 9 - Requirements",
+      "item": [
+        {
+          "name": "Create Requirement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"required_quantity\": 800.0,\n  \"min_purity\": 95.0,\n  \"delivery_location\": \"Dahej, Gujarat\",\n  \"required_date\": \"2026-11-15T00:00:00Z\",\n  \"max_budget\": 55.0,\n  \"status\": \"open\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requirements",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requirements"]
+            }
+          }
+        },
+        {
+          "name": "Get Requirements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requirements?limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requirements"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" },
+                { "key": "min_purity", "value": "90.0", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Requirement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requirements/{{requirementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requirements", "{{requirementId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Requirement",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"max_budget\": 52.0,\n  \"status\": \"open\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requirements/{{requirementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requirements", "{{requirementId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Requirement",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requirements/{{requirementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requirements", "{{requirementId}}"]
+            }
+          }
+        },
+        {
+          "name": "Validation Tests",
+          "item": [
+            {
+              "name": "Invalid Required Quantity Zero (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"required_quantity\": 0.0,\n  \"min_purity\": 95.0,\n  \"delivery_location\": \"Dahej\",\n  \"max_budget\": 50.0\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/requirements", "host": ["{{baseUrl}}"], "path": ["api", "requirements"] }
+              }
+            },
+            {
+              "name": "Invalid Min Purity Negative (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"required_quantity\": 500.0,\n  \"min_purity\": -5.0,\n  \"delivery_location\": \"Dahej\",\n  \"max_budget\": 50.0\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/requirements", "host": ["{{baseUrl}}"], "path": ["api", "requirements"] }
+              }
+            },
+            {
+              "name": "Invalid Negative Budget (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"required_quantity\": 500.0,\n  \"min_purity\": 95.0,\n  \"delivery_location\": \"Dahej\",\n  \"max_budget\": -20.0\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/requirements", "host": ["{{baseUrl}}"], "path": ["api", "requirements"] }
+              }
+            },
+            {
+              "name": "Invalid Date Format (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"required_quantity\": 500.0,\n  \"min_purity\": 95.0,\n  \"delivery_location\": \"Dahej\",\n  \"required_date\": \"not-a-date\"\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/requirements", "host": ["{{baseUrl}}"], "path": ["api", "requirements"] }
+              }
+            },
+            {
+              "name": "Malformed Body (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"required_quantity\": \"invalid_string\"\n}"
+                },
+                "url": { "raw": "{{baseUrl}}/api/requirements", "host": ["{{baseUrl}}"], "path": ["api", "requirements"] }
+              }
+            },
+            {
+              "name": "Nonexistent Requirement (404)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/requirements/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "requirements", "00000000-0000-0000-0000-000000000000"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Step 10 - Authentication",
+      "item": [
+        {
+          "name": "No Token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Invalid Token (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer malformed_invalid_jwt_token", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Seller Authorization",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Buyer Authorization",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Wrong Role (Buyer attempting Listing POST -> 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 500.0,\n  \"purity\": 98.0,\n  \"location\": \"Dahej\",\n  \"asking_price\": 45.0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/listings", "host": ["{{baseUrl}}"], "path": ["api", "listings"] }
+          }
+        },
+        {
+          "name": "Seller Ownership Test (Modify other seller's listing -> 403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{sellerToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asking_price\": 30.0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/listings/{{listingId}}", "host": ["{{baseUrl}}"], "path": ["api", "listings", "{{listingId}}"] }
+          }
+        },
+        {
+          "name": "Buyer Ownership Test (Modify other buyer's requirement -> 403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"max_budget\": 30.0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/requirements/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "requirements", "{{requirementId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 11 - Matchmaking",
+      "item": [
+        {
+          "name": "Excellent Match",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        },
+        {
+          "name": "Poor Purity Filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        },
+        {
+          "name": "Insufficient Quantity Penalty",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        },
+        {
+          "name": "Excessive Distance Penalty",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        },
+        {
+          "name": "Excessive Price Penalty",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        },
+        {
+          "name": "Incompatible Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        },
+        {
+          "name": "Multiple Listings Ranking",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        },
+        {
+          "name": "Unauthorized Buyer (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{buyerToken}}", "type": "text" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/matches/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "matches", "00000000-0000-0000-0000-000000000000"] }
+          }
+        },
+        {
+          "name": "Unauthenticated Request (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/matches/{{requirementId}}", "host": ["{{baseUrl}}"], "path": ["api", "matches", "{{requirementId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}

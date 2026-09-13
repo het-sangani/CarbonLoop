@@ -17,6 +17,8 @@ import {
   Compass
 } from 'lucide-react';
 
+import { carbonLoopApi } from '../services/api';
+
 export default function CreateBuyerRequirementPage() {
   const navigate = useNavigate();
 
@@ -40,7 +42,9 @@ export default function CreateBuyerRequirementPage() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [createdRequirementId, setCreatedRequirementId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Quick Template: GreenFuel
   const loadGreenFuelTemplate = () => {
@@ -62,6 +66,7 @@ export default function CreateBuyerRequirementPage() {
       description: 'Catalytic synthesis of sustainable aviation fuels (e-SAF) combined with renewable hydrogen from 50MW alkaline electrolyzers.',
       contactPerson: 'Meera Krishnan, VP Carbon Sourcing'
     });
+    setErrorMessage(null);
   };
 
   const handleStateToggle = (stateName: string) => {
@@ -80,13 +85,45 @@ export default function CreateBuyerRequirementPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    // Form validations
+    if (!formData.volumeNeededTonnes || formData.volumeNeededTonnes <= 0) {
+      setErrorMessage('Please specify a valid monthly demand volume greater than 0 tonnes.');
+      return;
+    }
+    if (formData.minPurityPercentage < 50 || formData.minPurityPercentage > 100) {
+      setErrorMessage('Minimum chemical purity requirement must be between 50.0% and 100.0%.');
+      return;
+    }
+    if (formData.targetPricePerTonneUSD < 0) {
+      setErrorMessage('Target price per tonne cannot be negative.');
+      return;
+    }
+
+    const cityLoc = formData.city.trim() || 'Vadodara';
+    const loc = `${cityLoc}, ${formData.state || 'Gujarat'}`;
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const res = await carbonLoopApi.createRequirement({
+        min_purity: Number(formData.minPurityPercentage),
+        required_quantity: Number(formData.volumeNeededTonnes),
+        delivery_location: loc,
+        max_budget: Number(formData.targetPricePerTonneUSD),
+        required_date: formData.requiredBy ? `${formData.requiredBy}T00:00:00Z` : null,
+      });
+
+      setCreatedRequirementId(res.id);
       setSubmitted(true);
-    }, 600);
+    } catch (err: any) {
+      console.error('Failed to create buyer requirement:', err);
+      setErrorMessage(err.message || 'Failed to register requirement with the backend API.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -107,14 +144,26 @@ export default function CreateBuyerRequirementPage() {
         }
       />
 
+      {errorMessage && (
+        <div style={{ marginBottom: 24 }}>
+          <AlertBanner
+            variant="danger"
+            title="Registration Error"
+            message={errorMessage}
+            actionLabel="Dismiss"
+            onAction={() => setErrorMessage(null)}
+          />
+        </div>
+      )}
+
       {submitted && (
         <div style={{ marginBottom: 24 }}>
           <AlertBanner
             variant="success"
             title="Tender Published Successfully!"
-            message={`Your requirement for ${formData.buyerName || 'GreenFuel'} (${formData.volumeNeededTonnes} tonnes/mo at min ${formData.minPurityPercentage}% purity) is now registered.`}
+            message={`Your requirement #${createdRequirementId ? createdRequirementId.slice(0, 8) : ''} for ${formData.buyerName || 'GreenFuel'} (${formData.volumeNeededTonnes} tonnes/mo at min ${formData.minPurityPercentage}% purity in ${formData.city || 'Vadodara'}) is now registered.`}
             actionLabel="Run Live Match Engine"
-            onAction={() => navigate('/matches?buyerId=BUY-001')}
+            onAction={() => navigate(createdRequirementId ? `/matches/${createdRequirementId}` : '/matches')}
           />
         </div>
       )}

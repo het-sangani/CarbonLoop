@@ -16,6 +16,8 @@ import {
   Gauge
 } from 'lucide-react';
 
+import { createSupplyListing } from '../services/api';
+
 export default function CreateSupplyListingPage() {
   const navigate = useNavigate();
 
@@ -44,7 +46,9 @@ export default function CreateSupplyListingPage() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [createdListingId, setCreatedListingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Quick Template: ABC Cement
   const loadAbcCementTemplate = () => {
@@ -73,13 +77,19 @@ export default function CreateSupplyListingPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const response = await createSupplyListing(formData);
+      setCreatedListingId(response.id);
       setIsSubmitting(false);
       setSubmitted(true);
-    }, 600);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMessage(err.message || 'Failed to publish listing to the registry. Please ensure the backend server is running.');
+    }
   };
 
   return (
@@ -100,12 +110,23 @@ export default function CreateSupplyListingPage() {
         }
       />
 
+      {errorMessage && (
+        <div style={{ marginBottom: 24 }}>
+          <AlertBanner
+            variant="error"
+            title="Listing Creation Notice"
+            message={errorMessage}
+            onDismiss={() => setErrorMessage(null)}
+          />
+        </div>
+      )}
+
       {submitted && (
         <div style={{ marginBottom: 24 }}>
           <AlertBanner
             variant="success"
-            title="Stream Published Successfully!"
-            message={`Your listing for ${formData.companyName || 'ABC Cement'} (${formData.volumeTonnes} tonnes/mo at ${formData.co2Purity}% purity) is now active in the Gujarat exchange.`}
+            title="Stream Published Successfully to Database!"
+            message={`Your listing for ${formData.companyName || 'ABC Cement'} (${formData.volumeTonnes} tonnes/mo at ${formData.co2Purity}% purity) has been persisted to the Supabase clearinghouse database${createdListingId ? ` (ID: ${createdListingId})` : ''}.`}
             actionLabel="View in Marketplace"
             onAction={() => navigate('/marketplace')}
           />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Card,
@@ -10,6 +10,7 @@ import {
   StatTile
 } from '../components/common/UIComponents';
 import { mockSupplyListings, SupplyListing } from '../mockData';
+import { getSupplyListingById } from '../services/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,9 +24,23 @@ export default function ListingDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Find listing by ID, fallback to ABC Cement SUP-001
-  const listing: SupplyListing =
+  // Find initial listing by ID from mock data for immediate render, then hydrate from backend
+  const initialListing: SupplyListing =
     mockSupplyListings.find((s) => s.id === id) || mockSupplyListings[0];
+  const [listing, setListing] = useState<SupplyListing>(initialListing);
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+    getSupplyListingById(id).then((fetched) => {
+      if (isMounted && fetched) {
+        setListing(fetched);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   // Interactive corridor distance calculator state
   const [targetDestination, setTargetDestination] = useState<'Vadodara' | 'Bharuch' | 'Dahej' | 'Surat'>('Vadodara');

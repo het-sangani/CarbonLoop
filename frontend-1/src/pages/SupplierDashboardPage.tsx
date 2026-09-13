@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   PageHeader, 
@@ -8,10 +8,11 @@ import {
   CardHeader, 
   StatTile, 
   EmptyState,
-  SkeletonCard
+  SkeletonCard 
 } from '../components/common/UIComponents';
-import { mockSupplyListings, mockMatchResults } from '../mockData';
-import { Sparkles, Eye, Plus, CheckCircle2, RotateCcw } from 'lucide-react';
+import { mockSupplyListings, mockMatchResults, SupplyListing } from '../mockData';
+import { getSupplyListings } from '../services/api';
+import { Sparkles, Eye, Plus, CheckCircle2, RotateCcw, Building2 } from 'lucide-react';
 
 export const SupplierDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,8 +20,19 @@ export const SupplierDashboardPage: React.FC = () => {
   const [simLoading, setSimLoading] = useState(false);
   const [showEmptyDemo, setShowEmptyDemo] = useState(false);
 
-  const abcListing = mockSupplyListings[0];
-  const abcMatch = mockMatchResults[0];
+  const [supplyListings, setSupplyListings] = useState<SupplyListing[]>(mockSupplyListings);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>(mockSupplyListings[0].id);
+
+  useEffect(() => {
+    getSupplyListings().then((listings) => {
+      if (listings && listings.length > 0) {
+        setSupplyListings(listings);
+      }
+    });
+  }, []);
+
+  const activeListing = supplyListings.find((s) => s.id === selectedSupplierId) || supplyListings[0];
+  const activeMatch = mockMatchResults.find((m) => m.supplyListingId === activeListing.id) || mockMatchResults[0];
 
   const toggleLoadingDemo = () => {
     setSimLoading(true);
@@ -35,7 +47,31 @@ export const SupplierDashboardPage: React.FC = () => {
         title="Supplier Decarbonization Hub"
         subtitle="Manage point-source carbon capture streams, monitor continuous flow assay telemetry, and review inbound off-take bids."
         actions={
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFFFFF', padding: '4px 8px', borderRadius: 6, border: '1px solid #E5E5E2' }}>
+              <Building2 size={14} color="#0F3D2E" />
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#5A5C5A', textTransform: 'uppercase' }}>Enterprise:</span>
+              <select
+                value={activeListing.id}
+                onChange={(e) => setSelectedSupplierId(e.target.value)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#0F3D2E',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                {supplyListings.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.companyName} ({s.city})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -77,24 +113,28 @@ export const SupplierDashboardPage: React.FC = () => {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A1D1B', margin: 0 }}>
-                ABC Cement Ltd
+                {activeListing.companyName}
               </h2>
               <Badge variant="green" dot pulse>Verified Point-Source</Badge>
               <Badge variant="neutral">ISO 14064 Compliant</Badge>
             </div>
             <div style={{ fontSize: 13, color: '#5A5C5A' }}>
-              {abcListing.facilityName} · {abcListing.location} · Post-Combustion Precalciner Amine
+              {activeListing.facilityName} · {activeListing.location} · {activeListing.facilityType}
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 24 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8C8A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Baseline Capacity</div>
-              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#1A1D1B', marginTop: 2 }}>500 tonnes / mo</div>
+              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#1A1D1B', marginTop: 2 }}>
+                {activeListing.volumeTonnes} tonnes / mo
+              </div>
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8C8A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Delivery Condition</div>
-              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#0F3D2E', marginTop: 2 }}>Liquefied (18.5 bar)</div>
+              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#0F3D2E', marginTop: 2 }}>
+                {activeListing.physicalState} ({activeListing.pressureBar} bar)
+              </div>
             </div>
           </div>
         </div>
@@ -104,13 +144,13 @@ export const SupplierDashboardPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
         <StatTile
           label="Active Monthly Output"
-          value="500"
+          value={String(activeListing.volumeTonnes)}
           unit="t/mo"
           delta="+50t"
         />
         <StatTile
           label="Assayed CO₂ Purity"
-          value="96.0"
+          value={activeListing.composition.co2Purity.toFixed(1)}
           unit="%"
           delta="+0.8%"
         />
@@ -121,8 +161,8 @@ export const SupplierDashboardPage: React.FC = () => {
         />
         <StatTile
           label="Monthly Off-Take Value"
-          value="$21,000"
-          unit="@ $42/t"
+          value={`$${(activeListing.volumeTonnes * activeListing.pricePerTonneUSD).toLocaleString()}`}
+          unit={`@ $${activeListing.pricePerTonneUSD}/t`}
           delta="+$4,200"
         />
       </div>
@@ -218,32 +258,36 @@ export const SupplierDashboardPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ borderBottom: '1px solid #F1F1EF' }} className="hover:bg-[#FAFAF9]">
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ fontWeight: 600, color: '#1A1D1B' }}>{abcListing.facilityName}</div>
-                        <div style={{ fontSize: 12, color: '#8A8C8A' }}>{abcListing.location}</div>
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 700, color: '#0F3D2E' }}>
-                        {abcListing.composition.co2Purity.toFixed(1)}%
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px' }}>
-                        {abcListing.volumeTonnes} t/mo
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        {abcListing.physicalState} ({abcListing.pressureBar} bar)
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 600 }}>
-                        ${abcListing.pricePerTonneUSD} / t
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <Badge variant="teal" dot>Active Stream</Badge>
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/listings/${abcListing.id}`)}>
-                          Specifications →
-                        </Button>
-                      </td>
-                    </tr>
+                    {supplyListings.map((stream) => (
+                      <tr key={stream.id} style={{ borderBottom: '1px solid #F1F1EF' }} className="hover:bg-[#FAFAF9]">
+                        <td style={{ padding: '16px 20px' }}>
+                          <div style={{ fontWeight: 600, color: '#1A1D1B' }}>{stream.facilityName}</div>
+                          <div style={{ fontSize: 12, color: '#8A8C8A' }}>{stream.companyName} · {stream.location}</div>
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 700, color: '#0F3D2E' }}>
+                          {stream.composition.co2Purity.toFixed(1)}%
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px' }}>
+                          {stream.volumeTonnes} t/mo
+                        </td>
+                        <td style={{ padding: '16px 20px' }}>
+                          {stream.physicalState} ({stream.pressureBar} bar)
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 600 }}>
+                          ${stream.pricePerTonneUSD} / t
+                        </td>
+                        <td style={{ padding: '16px 20px' }}>
+                          <Badge variant={stream.id === activeListing.id ? 'teal' : 'neutral'} dot>
+                            {stream.status === 'active' ? 'Active Stream' : stream.status}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/listings/${stream.id}`)}>
+                            Specifications →
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

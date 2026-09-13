@@ -6,21 +6,22 @@ import {
   Button, 
   Card, 
   CardHeader, 
-  StatTile,
+  StatTile, 
   EmptyState,
-  SkeletonCard
+  SkeletonCard 
 } from '../components/common/UIComponents';
-import { mockBuyerRequirements, mockMatchResults } from '../mockData';
-import { Sparkles, Plus, RotateCcw } from 'lucide-react';
+import { mockBuyerRequirements, mockMatchResults, BuyerRequirement } from '../mockData';
+import { Sparkles, Plus, RotateCcw, Building2 } from 'lucide-react';
 
 export const BuyerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'requirements' | 'bids' | 'matches'>('requirements');
   const [simLoading, setSimLoading] = useState(false);
   const [showEmptyDemo, setShowEmptyDemo] = useState(false);
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string>(mockBuyerRequirements[0].id);
 
-  const greenFuel = mockBuyerRequirements[0];
-  const bestMatch = mockMatchResults[0]; // ABC Cement
+  const activeBuyer = mockBuyerRequirements.find((b) => b.id === selectedBuyerId) || mockBuyerRequirements[0];
+  const bestMatch = mockMatchResults[0];
 
   const toggleLoadingDemo = () => {
     setSimLoading(true);
@@ -35,7 +36,31 @@ export const BuyerDashboardPage: React.FC = () => {
         title="Buyer Utilization Hub"
         subtitle="Manage feedstock procurement tenders, verify gaseous/liquefied contaminant tolerances, and review off-take clearing status."
         actions={
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFFFFF', padding: '4px 8px', borderRadius: 6, border: '1px solid #E5E5E2' }}>
+              <Building2 size={14} color="#1A6158" />
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#5A5C5A', textTransform: 'uppercase' }}>Off-Taker:</span>
+              <select
+                value={activeBuyer.id}
+                onChange={(e) => setSelectedBuyerId(e.target.value)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#1A6158',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                {mockBuyerRequirements.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.buyerName} ({b.city})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -77,24 +102,28 @@ export const BuyerDashboardPage: React.FC = () => {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A1D1B', margin: 0 }}>
-                GreenFuel SynTech Ltd
+                {activeBuyer.buyerName}
               </h2>
               <Badge variant="teal" dot pulse>Anchor Off-Taker</Badge>
               <Badge variant="neutral">CORSIA Compliant</Badge>
             </div>
             <div style={{ fontSize: 13, color: '#5A5C5A' }}>
-              {greenFuel.facilityName} · {greenFuel.location} · Power-to-Liquid e-SAF Synthesis
+              {activeBuyer.facilityName} · {activeBuyer.location} · {activeBuyer.industry}
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 24 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8C8A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Monthly Requirement</div>
-              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#1A1D1B', marginTop: 2 }}>300 tonnes / mo</div>
+              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#1A1D1B', marginTop: 2 }}>
+                {activeBuyer.volumeNeededTonnes} tonnes / mo
+              </div>
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8C8A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Intake Purity Floor</div>
-              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#2E9E8A', marginTop: 2 }}>&ge; 95.0% CO₂</div>
+              <div className="tabular-nums" style={{ fontSize: 16, fontWeight: 700, color: '#2E9E8A', marginTop: 2 }}>
+                &ge; {activeBuyer.minPurityPercentage.toFixed(1)}% CO₂
+              </div>
             </div>
           </div>
         </div>
@@ -104,20 +133,20 @@ export const BuyerDashboardPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
         <StatTile
           label="Contracted Volume"
-          value="300"
+          value={String(activeBuyer.volumeNeededTonnes)}
           unit="t/mo"
           delta="100% Secured"
         />
         <StatTile
           label="Target Budget"
-          value="$45"
+          value={`$${activeBuyer.targetPricePerTonneUSD}`}
           unit="/ tonne max"
         />
         <StatTile
-          label="Secured Supply Rate"
-          value="$42"
-          unit="/ tonne"
-          delta="-$3/t savings"
+          label="Estimated Monthly Spend"
+          value={`$${(activeBuyer.volumeNeededTonnes * activeBuyer.targetPricePerTonneUSD).toLocaleString()}`}
+          unit="/ month"
+          delta="Procurement Budget"
         />
         <StatTile
           label="Active Corridor Matches"
@@ -129,7 +158,7 @@ export const BuyerDashboardPage: React.FC = () => {
       {/* Tabs with Count Badges */}
       <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #E5E5E2', marginBottom: 20 }}>
         {[
-          { key: 'requirements', label: 'Active Sourcing Requirements', count: 1 },
+          { key: 'requirements', label: 'Active Sourcing Requirements', count: mockBuyerRequirements.length },
           { key: 'bids', label: 'Outbound RFP Proposals', count: 1 },
           { key: 'matches', label: 'Algorithmic Emitter Matches', count: 2 },
         ].map((tab) => {
@@ -216,32 +245,36 @@ export const BuyerDashboardPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ borderBottom: '1px solid #F1F1EF' }} className="hover:bg-[#FAFAF9]">
-                      <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 700 }}>
-                        {greenFuel.id}
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ fontWeight: 600, color: '#1A1D1B' }}>{greenFuel.facilityName}</div>
-                        <div style={{ fontSize: 12, color: '#8A8C8A' }}>{greenFuel.location}</div>
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px' }}>
-                        {greenFuel.volumeNeededTonnes} t/mo
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px', color: '#1A6158', fontWeight: 700 }}>
-                        &ge; {greenFuel.minPurityPercentage.toFixed(1)}%
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '16px 20px' }}>
-                        ${greenFuel.targetPricePerTonneUSD} / t
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <Badge variant="teal" dot>Open Tender</Badge>
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        <Button size="sm" variant="outline" onClick={() => navigate('/matches')}>
-                          View Matches (96%) →
-                        </Button>
-                      </td>
-                    </tr>
+                    {mockBuyerRequirements.map((req) => (
+                      <tr key={req.id} style={{ borderBottom: '1px solid #F1F1EF' }} className="hover:bg-[#FAFAF9]">
+                        <td className="tabular-nums" style={{ padding: '16px 20px', fontWeight: 700 }}>
+                          {req.id}
+                        </td>
+                        <td style={{ padding: '16px 20px' }}>
+                          <div style={{ fontWeight: 600, color: '#1A1D1B' }}>{req.facilityName}</div>
+                          <div style={{ fontSize: 12, color: '#8A8C8A' }}>{req.buyerName} · {req.location}</div>
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px' }}>
+                          {req.volumeNeededTonnes} t/mo
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px', color: '#1A6158', fontWeight: 700 }}>
+                          &ge; {req.minPurityPercentage.toFixed(1)}%
+                        </td>
+                        <td className="tabular-nums" style={{ padding: '16px 20px' }}>
+                          ${req.targetPricePerTonneUSD} / t
+                        </td>
+                        <td style={{ padding: '16px 20px' }}>
+                          <Badge variant={req.id === activeBuyer.id ? 'teal' : 'neutral'} dot>
+                            {req.status === 'open' ? 'Open Tender' : req.status}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                          <Button size="sm" variant="outline" onClick={() => navigate('/matches')}>
+                            View Matches →
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

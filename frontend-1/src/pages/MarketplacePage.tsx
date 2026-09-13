@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -10,6 +10,7 @@ import {
   EmptyState
 } from '../components/common/UIComponents';
 import { mockSupplyListings, mockBuyerRequirements, SupplyListing, BuyerRequirement } from '../mockData';
+import { getSupplyListings } from '../services/api';
 import {
   Search,
   Droplets,
@@ -30,10 +31,30 @@ export default function MarketplacePage() {
   const [selectedPurity, setSelectedPurity] = useState<number>(0);
   const [selectedState, setSelectedState] = useState<string>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<string>('all');
+  const [supplyListings, setSupplyListings] = useState<SupplyListing[]>(mockSupplyListings);
+  const [isLoadingSupplies, setIsLoadingSupplies] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingSupplies(true);
+    getSupplyListings()
+      .then((listings) => {
+        if (isMounted) {
+          setSupplyListings(listings);
+          setIsLoadingSupplies(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsLoadingSupplies(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Filter supply listings
   const filteredSupplies = useMemo(() => {
-    return mockSupplyListings.filter((item: SupplyListing) => {
+    return supplyListings.filter((item: SupplyListing) => {
       const matchesSearch =
         item.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.facilityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -46,7 +67,7 @@ export default function MarketplacePage() {
 
       return matchesSearch && matchesPurity && matchesState && matchesDelivery;
     });
-  }, [searchQuery, selectedPurity, selectedState, selectedDelivery]);
+  }, [supplyListings, searchQuery, selectedPurity, selectedState, selectedDelivery]);
 
   // Filter buyer demands
   const filteredBuyers = useMemo(() => {
@@ -63,7 +84,7 @@ export default function MarketplacePage() {
     });
   }, [searchQuery, selectedPurity, selectedState]);
 
-  const totalMonthlySupply = mockSupplyListings.reduce((sum, s) => sum + s.volumeTonnes, 0);
+  const totalMonthlySupply = supplyListings.reduce((sum, s) => sum + s.volumeTonnes, 0);
   const totalMonthlyDemand = mockBuyerRequirements.reduce((sum, b) => sum + b.volumeNeededTonnes, 0);
 
   return (
@@ -179,7 +200,7 @@ export default function MarketplacePage() {
               }}
             >
               <Factory size={16} />
-              Supply Streams ({mockSupplyListings.length})
+              Supply Streams ({supplyListings.length})
             </button>
             <button
               onClick={() => setActiveTab('demand')}

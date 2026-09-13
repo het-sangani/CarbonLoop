@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   CarbonLoopOrb, 
   Button, 
@@ -7,16 +7,112 @@ import {
   AlertBanner,
   Badge
 } from '../components/common/UIComponents';
+import { useAuth } from '../context/AuthContext';
 
 export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, isAuthenticated, login, logout } = useAuth();
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [role, setRole] = useState<'supplier' | 'buyer' | 'transporter' | 'government'>('supplier');
-  const [email, setEmail] = useState('rajesh.varma@abccement.com');
-  const [password, setPassword] = useState('••••••••••••');
-  const [orgName, setOrgName] = useState('ABC Cement Ltd');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [orgName, setOrgName] = useState('');
+  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const demoPersonas = [
+    {
+      id: 'abc-cement',
+      name: 'ABC Cement Ltd',
+      role: 'supplier' as const,
+      email: 'rajesh.varma@abccement.com',
+      subtext: 'Supplier (Cement • 500t / 96%)',
+      route: '/dashboard/supplier'
+    },
+    {
+      id: 'gujarat-bio',
+      name: 'Gujarat Bio-Refinery',
+      role: 'supplier' as const,
+      email: 'ananya.patel@gujaratbio.com',
+      subtext: 'Supplier (Bio-Ethanol • 1200t / 99%)',
+      route: '/dashboard/supplier'
+    },
+    {
+      id: 'surat-power',
+      name: 'Surat Coastal Power',
+      role: 'supplier' as const,
+      email: 'vikram.mehta@suratpower.in',
+      subtext: 'Supplier (Power Plant • 3500t / 91.5%)',
+      route: '/dashboard/supplier'
+    },
+    {
+      id: 'jamnagar-dac',
+      name: 'Jamnagar Direct Air Hub',
+      role: 'supplier' as const,
+      email: 'siddharth.dave@jamnagardac.in',
+      subtext: 'Supplier (DAC Alpha • 250t / 99.8%)',
+      route: '/dashboard/supplier'
+    },
+    {
+      id: 'greenfuel',
+      name: 'GreenFuel SynTech',
+      role: 'buyer' as const,
+      email: 'procurement@greenfuel.in',
+      subtext: 'Buyer (e-SAF • 300t / 95%)',
+      route: '/dashboard/buyer'
+    },
+    {
+      id: 'ultratech-concrete',
+      name: 'Ultratech Eco-Concrete',
+      role: 'buyer' as const,
+      email: 'procurement@ultratech-eco.in',
+      subtext: 'Buyer (Mineralization • 800t / 92%)',
+      route: '/dashboard/buyer'
+    },
+    {
+      id: 'reliance-chem',
+      name: 'Reliance Clean Chem',
+      role: 'buyer' as const,
+      email: 'feedstock@reliancechem.in',
+      subtext: 'Buyer (Chemical Synthesis • 2000t / 98%)',
+      route: '/dashboard/buyer'
+    },
+    {
+      id: 'cryo-trans',
+      name: 'CryoTrans Logistics',
+      role: 'transporter' as const,
+      email: 'fleet.dispatch@cryotrans.in',
+      subtext: 'Carrier (Cryogenic ISO Tanker Fleet)',
+      route: '/transactions'
+    },
+    {
+      id: 'gpcb-auditor',
+      name: 'GPCB Compliance Node',
+      role: 'government' as const,
+      email: 'compliance.officer@gpcb.gov.in',
+      subtext: 'Auditor (Gujarat Pollution Control)',
+      route: '/marketplace'
+    }
+  ];
+
+  const handleSelectPersona = (persona: typeof demoPersonas[0]) => {
+    setSelectedPersona(persona.id);
+    setRole(persona.role);
+    setEmail(persona.email);
+    setPassword('••••••••••••');
+    setOrgName(persona.name);
+    setErrorMessage(null);
+  };
+
+  const handleClearInputs = () => {
+    setSelectedPersona(null);
+    setEmail('');
+    setPassword('');
+    setOrgName('');
+    setErrorMessage(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,35 +136,41 @@ export const AuthPage: React.FC = () => {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      if (role === 'supplier') {
+
+      const effectiveName = orgName.trim() || email.split('@')[0];
+      const effectiveOrg = orgName.trim() || `${email.split('@')[0]} Industrial`;
+
+      login({
+        id: `user-${Date.now()}`,
+        email: email,
+        name: effectiveName,
+        organization: effectiveOrg,
+        role: role,
+      });
+
+      // If user came from a specific protected sub-route, return them there; otherwise proceed to role dashboard
+      const returnUrl = (location.state as any)?.from?.pathname;
+      if (returnUrl && returnUrl !== '/auth' && returnUrl !== '/') {
+        navigate(returnUrl);
+      } else if (role === 'supplier') {
         navigate('/dashboard/supplier');
-      } else {
+      } else if (role === 'buyer') {
         navigate('/dashboard/buyer');
+      } else if (role === 'transporter') {
+        navigate('/transactions');
+      } else {
+        navigate('/marketplace');
       }
     }, 600);
   };
 
-  const setDemoSupplier = () => {
-    setRole('supplier');
-    setEmail('rajesh.varma@abccement.com');
-    setOrgName('ABC Cement Ltd');
-    setMode('signin');
-    setErrorMessage(null);
-  };
-
-  const setDemoBuyer = () => {
-    setRole('buyer');
-    setEmail('procurement@greenfuel.in');
-    setOrgName('GreenFuel SynTech Ltd');
-    setMode('signin');
-    setErrorMessage(null);
-  };
+  const requiredFrom = (location.state as any)?.from?.pathname;
 
   return (
-    <div style={{ maxWidth: 480, margin: '60px auto', padding: '0 20px' }}>
+    <div style={{ maxWidth: 520, margin: '50px auto', padding: '0 20px' }}>
       
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
+      <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <div style={{ display: 'inline-flex', justifyContent: 'center', marginBottom: 12 }}>
           <CarbonLoopOrb size={48} variant="teal-on-white" />
         </div>
@@ -80,45 +182,121 @@ export const AuthPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Quick Demo Pre-Fillers */}
-      <Card style={{ padding: 16, marginBottom: 20, background: '#FAFAF9' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8C8A', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-          ⚡ 1-Click Quick Demo Sign-Ins
+      {requiredFrom && requiredFrom !== '/' && (
+        <div style={{ marginBottom: 20 }}>
+          <AlertBanner
+            variant="warning"
+            title="Authentication Required"
+            message={`Access to ${requiredFrom} is restricted to authorized industrial entities. Please sign in or register below.`}
+          />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <button
-            type="button"
-            onClick={setDemoSupplier}
-            style={{
-              padding: '10px 12px',
-              textAlign: 'left',
-              background: role === 'supplier' ? '#EAF0EB' : '#FFFFFF',
-              border: role === 'supplier' ? '1.5px solid #2A5C3A' : '1px solid #E5E5E2',
-              borderRadius: 6,
-              cursor: 'pointer',
-              transition: 'all 150ms ease'
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0F3D2E' }}>ABC Cement</div>
-            <div className="tabular-nums" style={{ fontSize: 11, color: '#5A5C5A', marginTop: 2 }}>Supplier (500t / 96%)</div>
-          </button>
+      )}
 
-          <button
-            type="button"
-            onClick={setDemoBuyer}
+      {/* Active Session Notification */}
+      {isAuthenticated && user && (
+        <div style={{ marginBottom: 20 }}>
+          <div
             style={{
-              padding: '10px 12px',
-              textAlign: 'left',
-              background: role === 'buyer' ? '#E8F4F1' : '#FFFFFF',
-              border: role === 'buyer' ? '1.5px solid #1A6158' : '1px solid #E5E5E2',
-              borderRadius: 6,
-              cursor: 'pointer',
-              transition: 'all 150ms ease'
+              background: '#F0FDF4',
+              border: '1px solid #BBF7D0',
+              borderRadius: 8,
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#1A6158' }}>GreenFuel</div>
-            <div className="tabular-nums" style={{ fontSize: 11, color: '#5A5C5A', marginTop: 2 }}>Buyer (300t / 95%)</div>
-          </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#14532D' }}>
+                  Signed in as {user.organization || user.name}
+                </span>
+                <Badge variant="supplier" size="sm">{user.role.toUpperCase()}</Badge>
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: '#166534', margin: 0, lineHeight: 1.4 }}>
+              You currently have an active session saved. You can continue to your platform dashboard, or sign out to register or switch to another entity account.
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (user.role === 'supplier') navigate('/dashboard/supplier');
+                  else if (user.role === 'buyer') navigate('/dashboard/buyer');
+                  else if (user.role === 'transporter') navigate('/transactions');
+                  else navigate('/marketplace');
+                }}
+              >
+                Continue to Dashboard →
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  logout();
+                  handleClearInputs();
+                }}
+              >
+                Sign Out / Switch Account
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Demo Pre-Fillers (Optional Testing Personas) */}
+      <Card style={{ padding: '16px 20px', marginBottom: 24, background: '#FAFAF9' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#0F3D2E', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            ⚡ Ecosystem Testing Personas (Optional)
+          </div>
+          {selectedPersona && (
+            <button
+              type="button"
+              onClick={handleClearInputs}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 11,
+                color: '#8A8C8A',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: 0
+              }}
+            >
+              Reset to Blank
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: '#5A5C5A', marginBottom: 12, lineHeight: 1.4 }}>
+          Select an entity to test specific industrial dashboards, or enter your own corporate credentials below.
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, maxHeight: 180, overflowY: 'auto', paddingRight: 4 }}>
+          {demoPersonas.map((p) => {
+            const isSelected = selectedPersona === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleSelectPersona(p)}
+                style={{
+                  padding: '8px 10px',
+                  textAlign: 'left',
+                  background: isSelected ? '#EAF0EB' : '#FFFFFF',
+                  border: isSelected ? '1.5px solid #2A5C3A' : '1px solid #E5E5E2',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease'
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1D1B' }}>{p.name}</div>
+                <div className="tabular-nums" style={{ fontSize: 10, color: '#5A5C5A', marginTop: 2 }}>{p.subtext}</div>
+              </button>
+            );
+          })}
         </div>
       </Card>
 
@@ -253,10 +431,11 @@ export const AuthPage: React.FC = () => {
             fullWidth
             size="lg"
             isLoading={isLoading}
-            loadingText="Verifying credentials..."
+            loadingText={mode === 'signin' ? 'Verifying credentials...' : 'Registering entity...'}
+            aria-label={mode === 'signin' ? 'Sign In to Portal' : 'Register Entity'}
             style={{ marginTop: 8 }}
           >
-            {mode === 'signin' ? 'Sign In to Portal' : 'Create CCUS Node'}
+            {mode === 'signin' ? 'Sign In to Portal' : 'Register Entity'}
           </Button>
 
         </form>

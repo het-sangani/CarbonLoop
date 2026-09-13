@@ -1,0 +1,113 @@
+# ==============================================================================
+# CarbonLoop Technical Evaluation Manifest (.agent)
+# Machine-readable and LLM-evaluator configuration for codebase auditing.
+# ==============================================================================
+
+version: "1.0.0"
+project:
+  name: "CarbonLoop"
+  description: "B2B Carbon Capture-to-Product Matchmaking Marketplace and CCUS Clearinghouse"
+  repository_type: "Full-Stack Web Application (Monorepo: Frontend + Backend)"
+  domain: "Climate Tech / Clean Energy / Industrial Circular Economy"
+
+# ------------------------------------------------------------------------------
+# 1. Agent Operational Scope
+# ------------------------------------------------------------------------------
+operational_scope:
+  purpose: >
+    CarbonLoop bridges the gap between CO2 point-source emitters (cement, bio-refineries,
+    power plants, DAC) and industrial utilization off-takers (concrete mineralization,
+    e-SAF synthetic aviation fuels, specialty polymers, greenhouses). It enables structured
+    feedstock listings, multi-attribute matching (purity, state, volume, distance),
+    and custody lifecycle tracking.
+  target_runtimes:
+    frontend:
+      environment: "Node.js >= 20.x, NPM >= 10.x"
+      framework: "React 19, TypeScript 5.7, Vite 8, Tailwind CSS v4"
+      port: 8443
+    backend:
+      environment: "Python >= 3.11, FastAPI >= 0.110.0, Uvicorn >= 0.28.0"
+      framework: "FastAPI REST API, Pydantic v2, PostgREST / Supabase Client"
+      port: 8008
+    database:
+      engine: "Supabase PostgreSQL"
+      features: ["Row Level Security (RLS)", "PostgREST API", "Database Triggers"]
+
+# ------------------------------------------------------------------------------
+# 2. Codebase Topology & Navigation Map
+# ------------------------------------------------------------------------------
+codebase_topology:
+  root_manifests:
+    backend_dependencies: "backend/requirements.txt"
+    frontend_dependencies: "frontend-1/package.json"
+    system_architecture: "docs/architecture.md"
+
+  primary_entry_points:
+    backend_api_gateway: "backend/app/main.py"
+    frontend_client_entry: "frontend-1/src/main.tsx"
+    frontend_router_root: "frontend-1/src/App.tsx"
+
+  core_modules_and_algorithms:
+    backend_listing_service:
+      path: "backend/app/services/listing_service.py"
+      description: "Data layer orchestrating Supabase co2_listings persistence with RLS and schema validation."
+    backend_api_routes:
+      path: "backend/app/api/routes/listings.py"
+      description: "RESTful endpoints for listing ingestion, querying, and filtering."
+    backend_schemas:
+      path: "backend/app/schemas/listing.py"
+      description: "Pydantic v2 domain schemas validating quantity, purity, location, and pricing."
+    frontend_api_client:
+      path: "frontend-1/src/services/api.ts"
+      description: "Typed bidirectional mapping connecting Supabase records to frontend domain models with graceful fallback."
+    authentication_and_guards:
+      context: "frontend-1/src/context/AuthContext.tsx"
+      guard: "frontend-1/src/components/common/ProtectedRoute.tsx"
+      auth_page: "frontend-1/src/pages/AuthPage.tsx"
+      description: "Session-isolated role-based gatekeeper for suppliers, buyers, carriers, and auditors."
+    geospatial_and_marketplace:
+      marketplace_explorer: "frontend-1/src/pages/MarketplacePage.tsx"
+      match_engine_view: "frontend-1/src/pages/MatchEnginePage.tsx"
+      supplier_dashboard: "frontend-1/src/pages/SupplierDashboardPage.tsx"
+      buyer_dashboard: "frontend-1/src/pages/BuyerDashboardPage.tsx"
+      live_custody: "frontend-1/src/pages/TransactionCustodyPage.tsx"
+
+# ------------------------------------------------------------------------------
+# 3. Verification & Evaluation Commands
+# ------------------------------------------------------------------------------
+verification:
+  backend:
+    directory: "backend"
+    install_dependencies: "pip install -r requirements.txt"
+    run_tests: "pytest tests"
+    run_tests_venv: ".venv/Scripts/python -m pytest tests"
+    dev_server: "uvicorn app.main:app --host 127.0.0.1 --port 8008 --reload"
+    health_check: "curl -s http://127.0.0.1:8008/api/health"
+
+  frontend:
+    directory: "frontend-1"
+    install_dependencies: "npm install"
+    typecheck_and_build: "npm run build"
+    format_check: "npm run format"
+    dev_server: "npm run dev"
+    health_check: "curl -s http://localhost:8443/"
+
+# ------------------------------------------------------------------------------
+# 4. Architectural Invariants & Patterns
+# ------------------------------------------------------------------------------
+architectural_invariants:
+  - id: INV-01
+    name: "Decoupled Monorepo Architecture"
+    pattern: "Independent frontend and backend runtimes communicating via typed REST contracts and Vite proxy (/api -> :8008)."
+  - id: INV-02
+    name: "Schema-Driven Type Safety"
+    pattern: "Dual-layer validation: Pydantic v2 on API boundaries and TypeScript strict interfaces on the frontend client."
+  - id: INV-03
+    name: "Defense-in-Depth & Graceful Degradation"
+    pattern: "Frontend client seamlessly falls back to high-fidelity regional mock profiles when backend or DB connection is unreachable."
+  - id: INV-04
+    name: "Zero-Leak Session Isolation"
+    pattern: "Authentication relies on tab/window sessionStorage rather than perpetual storage, enforcing clean evaluation sessions."
+  - id: INV-05
+    name: "CORS & Port Constraints"
+    pattern: "Explicit white-listing of frontend origins (port 8443) with preflight handling and strict port enforcement."
